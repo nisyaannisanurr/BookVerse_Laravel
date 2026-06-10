@@ -101,6 +101,25 @@ class AdminKomunitasController extends Controller
         return redirect("/admin/komunitas/{$member->komunitas_id}/members")->with('success', 'Permintaan ditolak.');
     }
 
+    public function kickMember(Request $request)
+    {
+        $memberId = (int) $request->member_id;
+        $member = AnggotaKomunitas::with('komunitas')->find($memberId);
+
+        if (!$member || $member->komunitas->creator_id !== auth()->id()) abort(403);
+
+        $member->delete();
+
+        Notifikasi::create([
+            'user_id'    => $member->user_id,
+            'tipe'       => 'dikeluarkan_komunitas',
+            'pesan'      => 'Anda telah dikeluarkan dari komunitas "' . $member->komunitas->nama_komunitas . '" oleh admin karena melanggar peraturan.',
+            'url_target' => null,
+        ]);
+
+        return redirect("/admin/komunitas/{$member->komunitas_id}/members")->with('success', 'Anggota berhasil dikeluarkan.');
+    }
+
     public function moderation(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);

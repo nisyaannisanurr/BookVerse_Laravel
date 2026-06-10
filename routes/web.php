@@ -59,6 +59,7 @@ Route::get('/community/{id}', [CommunityController::class, 'gate'])->name('commu
 
 Route::middleware('auth')->group(function () {
     Route::post('/community/{id}/join', [CommunityController::class, 'join'])->name('community.join');
+    Route::post('/community/{id}/leave', [CommunityController::class, 'leave'])->name('community.leave');
 
     // Semua user bisa ajukan komunitas → otomatis jadi admin komunitas
     Route::get('/community/create', [CommunityController::class, 'showCreateForm'])->name('community.create');
@@ -68,17 +69,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/community/{id}/feed', [CommunityController::class, 'feed'])->name('community.feed');
     Route::get('/community/{id}/chat', [CommunityController::class, 'chatIndex'])->name('community.chat');
     Route::get('/community/{id}/chat/fetch', [CommunityController::class, 'fetchChats'])->name('community.chat.fetch');
-    Route::post('/community/{id}/chat/send', [CommunityController::class, 'sendChat'])->name('community.chat.send');
+    Route::post('/community/{id}/chat/send', [CommunityController::class, 'sendChat'])->name('community.chat.send')->middleware('throttle:15,1');
     Route::post('/community/{id}/chat/{chatId}/react', [CommunityController::class, 'reactChat'])->name('community.chat.react');
-    Route::post('/community/{id}/post', [CommunityController::class, 'createPost'])->name('community.post.create');
+    Route::post('/community/{id}/post', [CommunityController::class, 'createPost'])->name('community.post.create')->middleware('throttle:15,1');
     Route::get('/community/post/{id}', [CommunityController::class, 'postDetail'])->name('community.post.detail');
     Route::post('/community/post/{id}/like', [CommunityController::class, 'likePost'])->name('community.post.like');
-    Route::post('/community/comment', [CommunityController::class, 'addComment'])->name('community.comment.add');
+    Route::post('/community/comment', [CommunityController::class, 'addComment'])->name('community.comment.add')->middleware('throttle:15,1');
     Route::post('/community/post/delete', [CommunityController::class, 'deletePost'])->name('community.post.delete');
     Route::post('/community/comment/delete', [CommunityController::class, 'deleteComment'])->name('community.comment.delete');
     Route::post('/community/report', [CommunityController::class, 'report'])->name('community.report');
     Route::post('/community/{id}/challenge/join', [CommunityController::class, 'joinChallenge'])->name('community.challenge.join');
-    Route::post('/community/{id}/qna/ask', [CommunityController::class, 'askQna'])->name('community.qna.ask');
+    Route::post('/community/{id}/qna/ask', [CommunityController::class, 'askQna'])->name('community.qna.ask')->middleware('throttle:15,1');
 });
 
 // ─── PRELOVED ──────────────────────────────────────────────
@@ -145,6 +146,7 @@ Route::prefix('admin/komunitas')->middleware(['auth', 'role:2'])->group(function
     Route::get('/{id}/members', [AdminKomunitasController::class, 'members'])->name('admin.komunitas.members');
     Route::post('/members/approve', [AdminKomunitasController::class, 'approveMember'])->name('admin.komunitas.members.approve');
     Route::post('/members/reject', [AdminKomunitasController::class, 'rejectMember'])->name('admin.komunitas.members.reject');
+    Route::post('/members/kick', [AdminKomunitasController::class, 'kickMember'])->name('admin.komunitas.members.kick');
     Route::get('/{id}/moderation', [AdminKomunitasController::class, 'moderation'])->name('admin.komunitas.moderation');
     Route::post('/moderation/delete-post', [AdminKomunitasController::class, 'deletePost'])->name('admin.komunitas.moderation.deletePost');
     Route::post('/moderation/delete-comment', [AdminKomunitasController::class, 'deleteComment'])->name('admin.komunitas.moderation.deleteComment');

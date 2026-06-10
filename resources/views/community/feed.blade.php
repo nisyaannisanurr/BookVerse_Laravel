@@ -74,9 +74,19 @@
                 </div>
                 <p class="text-sm text-secondary mt-md mb-0" style="line-height: 1.6; max-width: 600px;">{{ BookVerseHelper::truncate($community->deskripsi, 300) }}</p>
             </div>
-            <a href="{{ route('community.chat', $community->id) }}" class="btn" style="background: var(--community-theme); color: white; border-radius: 20px; padding: 10px 24px; font-weight: bold; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;">
-                <span style="font-size: 1.2rem;">💬</span> Buka Live Chat
-            </a>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ route('community.chat', $community->id) }}" class="btn" style="background: var(--community-theme); color: white; border-radius: 20px; padding: 10px 24px; font-weight: bold; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;">
+                    <span style="font-size: 1.2rem;">💬</span> Buka Live Chat
+                </a>
+                @if(auth()->check() && auth()->id() !== $community->creator_id && $members->contains('user_id', auth()->id()))
+                <form action="{{ route('community.leave', $community->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin keluar dari komunitas ini?');" style="margin: 0;">
+                    @csrf
+                    <button type="submit" class="btn" style="background: #fee2e2; color: #dc2626; border-radius: 20px; padding: 10px 24px; font-weight: bold; border: 1px solid #fca5a5; cursor: pointer;">
+                        Keluar Komunitas
+                    </button>
+                </form>
+                @endif
+            </div>
         </div>
     </div>
 </div>
@@ -185,6 +195,37 @@
                     </div>
                 @else
                     <p class="text-sm text-muted mb-0" style="text-align:center; padding: 30px 0;">Belum ada sesi Q&A dibuka.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard (Anggota Teraktif) -->
+    <div class="card widget-card">
+        <div class="card-body">
+            <h3 style="font-size:1.1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px; font-weight:700;" class="text-community">🏆 Anggota Teraktif</h3>
+            <div class="widget-scroll-content">
+                @if(isset($topMembers) && $topMembers->count() > 0)
+                    <div class="d-flex flex-column gap-sm">
+                        @foreach($topMembers as $index => $topMember)
+                        <div style="display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <div style="font-size: 1.2rem; font-weight: bold; color: {{ $index == 0 ? '#fbbf24' : ($index == 1 ? '#9ca3af' : ($index == 2 ? '#b45309' : 'var(--text-muted)')) }}; width: 20px; text-align: center;">
+                                {{ $index + 1 }}
+                            </div>
+                            @if($topMember->foto_profil)
+                                <img src="{{ BookVerseHelper::uploadUrl('profiles', $topMember->foto_profil) }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                            @else
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">👤</div>
+                            @endif
+                            <div style="flex: 1; overflow: hidden;">
+                                <div style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">{{ $topMember->username }}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">{{ $topMember->post_count }} Postingan</div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-sm text-muted mb-0" style="text-align:center; padding: 30px 0;">Belum ada data anggota teraktif.</p>
                 @endif
             </div>
         </div>

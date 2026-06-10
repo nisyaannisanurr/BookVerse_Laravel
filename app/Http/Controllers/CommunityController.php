@@ -15,16 +15,19 @@ use App\Models\QnaKomunitas;
 use App\Models\PesertaTantangan;
 use App\Models\PertanyaanQna;
 use App\Services\FileUploadService;
+use App\Services\ProfanityFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class CommunityController extends Controller
 {
     protected FileUploadService $uploadService;
+    protected ProfanityFilterService $profanityFilter;
 
-    public function __construct(FileUploadService $uploadService)
+    public function __construct(FileUploadService $uploadService, ProfanityFilterService $profanityFilter)
     {
         $this->uploadService = $uploadService;
+        $this->profanityFilter = $profanityFilter;
     }
 
     public function index(Request $request)
@@ -98,6 +101,23 @@ class CommunityController extends Controller
         return redirect("/community/{$id}")->with('success', 'Permintaan bergabung telah dikirim. Tunggu persetujuan admin.');
     }
 
+    public function leave(Request $request, int $id)
+    {
+        if (!auth()->check()) abort(403);
+
+        $membership = AnggotaKomunitas::where('user_id', auth()->id())
+            ->where('komunitas_id', $id)
+            ->first();
+
+        if (!$membership) {
+            return back()->with('error', 'Anda bukan anggota komunitas ini.');
+        }
+
+        $membership->delete();
+
+        return redirect('/community')->with('success', 'Anda telah keluar dari komunitas.');
+    }
+
     public function feed(int $id)
     {
         $community = Komunitas::withMemberCount()->find($id);
@@ -140,7 +160,16 @@ class CommunityController extends Controller
                 ->toArray();
         }
 
-        return view('community.feed', compact('community', 'posts', 'members', 'events', 'bookshelf', 'challenges', 'qnas', 'joinedChallengeIds'));
+        $topMembers = \App\Models\User::select('users.id', 'users.username', 'users.foto_profil')
+            ->selectRaw('COUNT(postingan_komunitas.id) as post_count')
+            ->join('postingan_komunitas', 'users.id', '=', 'postingan_komunitas.user_id')
+            ->where('postingan_komunitas.komunitas_id', $id)
+            ->groupBy('users.id', 'users.username', 'users.foto_profil')
+            ->orderByDesc('post_count')
+            ->limit(5)
+            ->get();
+
+        return view('community.feed', compact('community', 'posts', 'members', 'events', 'bookshelf', 'challenges', 'qnas', 'joinedChallengeIds', 'topMembers'));
     }
 
     public function joinChallenge(Request $request, int $komunitasId)
@@ -198,11 +227,16 @@ class CommunityController extends Controller
             }
         }
 
+        $judul = trim($request->judul ?? '') ?: null;
+        if ($judul) {
+            $judul = $this->profanityFilter->filter($judul);
+        }
+
         PostinganKomunitas::create([
             'komunitas_id' => $komunitasId,
             'user_id'      => auth()->id(),
-            'judul'        => trim($request->judul ?? '') ?: null,
-            'konten'       => $konten,
+            'judul'        => $judul,
+            'konten'       => $this->profanityFilter->filter($konten),
             'gambar'       => empty($gambarPaths) ? null : json_encode($gambarPaths),
         ]);
 
@@ -249,7 +283,7 @@ class CommunityController extends Controller
         KomentarPostingan::create([
             'postingan_id' => $postId,
             'user_id'      => auth()->id(),
-            'konten'       => $konten,
+            'konten'       => $this->profanityFilter->filter($konten),
             'gambar'       => $gambarPath,
         ]);
 
@@ -501,7 +535,7 @@ class CommunityController extends Controller
             'komunitas_id' => $id,
             'user_id' => auth()->id(),
             'parent_id' => $request->parent_id,
-            'pesan' => $request->pesan ?? '',
+            'pesan' => $this->profanityFilter->filter($request->pesan ?? ''),
             'media_path' => empty($mediaPaths) ? null : $mediaPaths,
             'media_type' => empty($mediaTypes) ? null : $mediaTypes,
         ]);
