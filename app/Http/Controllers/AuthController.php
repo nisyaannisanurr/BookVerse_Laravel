@@ -46,8 +46,14 @@ class AuthController extends Controller
             return redirect()->route('login')->with('error', 'Email atau password salah.');
         }
 
+        if ($user->status_akun === 'suspended') {
+            return redirect()->route('login')->with('error', 'Akun Anda telah ditangguhkan oleh Admin karena melanggar pedoman komunitas.');
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
+
+        \App\Models\LogAktivitas::record($user->id, 'Login', 'User login ke sistem menggunakan email.');
 
         if ($user->role_id === 1) {
             return redirect('/admin/superadmin');
@@ -114,18 +120,30 @@ class AuthController extends Controller
             return redirect()->route('register')->with('error', implode('<br>', $errors));
         }
 
-        User::create([
+        $user = User::create([
             'username' => $username,
             'email'    => $email,
             'password' => $password,
             'role_id'  => 3,
         ]);
 
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        \App\Models\LogAktivitas::record($user->id, 'Register', 'User berhasil mendaftar akun baru menggunakan email.');
+
+        // Cek jika dari ajukan komunitas
+        if ($request->has('redirect_to') && $request->redirect_to === 'community_create') {
+            return redirect('/community?tab=create')->with('success', 'Pendaftaran berhasil! Silakan lanjutkan membuat komunitas.');
+        }
+
         return redirect()->route('login')->with('success', 'Registrasi berhasil! Silakan login.');
     }
 
     public function logout(Request $request)
     {
+        \App\Models\LogAktivitas::record(Auth::id(), 'Logout', 'User keluar dari sistem.');
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -163,11 +181,17 @@ class AuthController extends Controller
             ->first();
 
         if ($user) {
+            if ($user->status_akun === 'suspended') {
+                return redirect()->route('login')->with('error', 'Akun Anda telah ditangguhkan oleh Admin karena melanggar pedoman komunitas.');
+            }
+
             // Akun sudah ada → update google_id & avatar jika belum terisi
             $user->update([
                 'google_id' => $googleUser->getId(),
                 'avatar'    => $user->avatar ?: $googleUser->getAvatar(),
             ]);
+
+            \App\Models\LogAktivitas::record($user->id, 'Login Google', 'User login menggunakan Google OAuth.');
         } else {
             // Buat user baru dari data Google
             $baseUsername = Str::slug(
@@ -193,6 +217,8 @@ class AuthController extends Controller
                 'google_id' => $googleUser->getId(),
                 'avatar'    => $googleUser->getAvatar(),
             ]);
+
+            \App\Models\LogAktivitas::record($user->id, 'Register Google', 'User mendaftar otomatis melalui Google OAuth.');
         }
 
         Auth::login($user);

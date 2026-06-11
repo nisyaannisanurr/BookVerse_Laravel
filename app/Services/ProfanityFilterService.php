@@ -2,14 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Profanity;
+use Illuminate\Support\Facades\Cache;
+
 class ProfanityFilterService
 {
-    protected array $badWords = [
-        'anjing', 'babi', 'monyet', 'bangsat', 'tolol', 'goblok', 'bego', 
-        'kampret', 'sialan', 'bajingan', 'jancok', 'asu', 'kontol', 'memek',
-        'ngentot', 'perek', 'pelacur'
-    ];
-
     /**
      * Sensor teks yang mengandung kata-kata kasar dengan tanda bintang ***
      *
@@ -22,7 +19,20 @@ class ProfanityFilterService
             return $text;
         }
 
-        foreach ($this->badWords as $word) {
+        $badWords = Cache::rememberForever('profanity_words', function () {
+            // Jika tabel belum ada atau kosong, kembalikan array kosong (mencegah error saat migrate awal)
+            try {
+                return Profanity::pluck('kata')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        });
+
+        if (empty($badWords)) {
+            return $text;
+        }
+
+        foreach ($badWords as $word) {
             // Case-insensitive replacement menggunakan regex
             $pattern = '/\b' . preg_quote($word, '/') . '\b/i';
             $text = preg_replace_callback($pattern, function ($matches) {

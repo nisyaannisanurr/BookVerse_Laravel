@@ -13,8 +13,9 @@ use App\Http\Controllers\Admin\AdminKomunitasController;
 use App\Http\Controllers\SuperadminAuthController;
 use Illuminate\Support\Facades\Route;
 
-// ─── PUBLIC ROUTES ─────────────────────────────────────────
+// ─── HOME & MISC ───────────────────────────────────────────
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::post('/report', [HomeController::class, 'submitReport'])->name('report.submit');
 Route::get('/search', [BookController::class, 'search'])->name('search');
 Route::get('/recommendations', [RecommendationController::class, 'index'])->name('recommendations.index');
 Route::get('/about', fn() => view('pages.about'))->name('about');
@@ -122,6 +123,9 @@ Route::prefix('admin/superadmin')->middleware(['auth', 'role:1'])->group(functio
 
     Route::get('/users', [SuperadminController::class, 'users'])->name('admin.superadmin.users');
     Route::post('/users/delete', [SuperadminController::class, 'deleteUser'])->name('admin.superadmin.users.delete');
+    Route::post('/users/suspend', [SuperadminController::class, 'suspendUser'])->name('admin.superadmin.users.suspend');
+    Route::get('/users/{id}/edit', [SuperadminController::class, 'editUserForm'])->name('admin.superadmin.users.editform')->where('id', '[0-9]+');
+    Route::post('/users/{id}/edit', [SuperadminController::class, 'editUser'])->name('admin.superadmin.users.edit');
 
     Route::get('/communities', [SuperadminController::class, 'communities'])->name('admin.superadmin.communities');
     Route::post('/communities/{id}/approve', [SuperadminController::class, 'approveCommunity'])->name('admin.superadmin.communities.approve');
@@ -138,6 +142,33 @@ Route::prefix('admin/superadmin')->middleware(['auth', 'role:1'])->group(functio
     Route::post('/genres/create', [SuperadminController::class, 'createGenre'])->name('admin.superadmin.genres.create');
     Route::post('/genres/{id}/edit', [SuperadminController::class, 'editGenre'])->name('admin.superadmin.genres.edit');
     Route::post('/genres/delete', [SuperadminController::class, 'deleteGenre'])->name('admin.superadmin.genres.delete');
+
+    // Tong Sampah
+    Route::get('/trash', [SuperadminController::class, 'trash'])->name('admin.superadmin.trash');
+    Route::post('/trash/book/restore', [SuperadminController::class, 'restoreBook'])->name('admin.superadmin.trash.book.restore');
+    Route::post('/trash/book/force-delete', [SuperadminController::class, 'forceDeleteBook'])->name('admin.superadmin.trash.book.delete');
+    Route::post('/trash/post/restore', [SuperadminController::class, 'restorePost'])->name('admin.superadmin.trash.post.restore');
+    Route::post('/trash/post/force-delete', [SuperadminController::class, 'forceDeletePost'])->name('admin.superadmin.trash.post.delete');
+
+    // Pusat Laporan Global
+    Route::get('/reports', [SuperadminController::class, 'reports'])->name('admin.superadmin.reports');
+    Route::post('/reports/resolve', [SuperadminController::class, 'resolveReport'])->name('admin.superadmin.reports.resolve');
+
+    // Broadcast Notifikasi
+    Route::get('/broadcast', [SuperadminController::class, 'broadcastForm'])->name('admin.superadmin.broadcast');
+    Route::post('/broadcast', [SuperadminController::class, 'sendBroadcast'])->name('admin.superadmin.broadcast.send');
+
+    // Settings
+    Route::get('/settings', [SuperadminController::class, 'settings'])->name('admin.superadmin.settings');
+    Route::post('/settings', [SuperadminController::class, 'updateSettings'])->name('admin.superadmin.settings.update');
+
+    // Profanities (Kamus Kata Kasar)
+    Route::get('/profanity', [SuperadminController::class, 'profanities'])->name('admin.superadmin.profanity');
+    Route::post('/profanity/add', [SuperadminController::class, 'addProfanity'])->name('admin.superadmin.profanity.add');
+    Route::post('/profanity/delete', [SuperadminController::class, 'deleteProfanity'])->name('admin.superadmin.profanity.delete');
+
+    // Logs
+    Route::get('/logs', [SuperadminController::class, 'logs'])->name('admin.superadmin.logs');
 });
 
 // ─── ADMIN: ADMIN KOMUNITAS ────────────────────────────────

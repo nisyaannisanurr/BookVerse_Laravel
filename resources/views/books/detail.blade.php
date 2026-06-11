@@ -94,6 +94,12 @@
     </div>
 </div>
 
+@auth
+<div style="text-align:right; margin-bottom:var(--space-md);">
+    <button type="button" onclick="openReportModal('buku', {{ $book->id }})" class="btn btn-ghost btn-sm" style="color:var(--danger); font-size:0.8rem;">🚩 Laporkan Buku</button>
+</div>
+@endauth
+
 <!-- Sinopsis -->
 <div class="sinopsis-section fade-in-up">
     <h3 class="mb-md">Sinopsis</h3>

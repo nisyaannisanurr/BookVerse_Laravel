@@ -313,6 +313,38 @@
                 <div class="nav-icon">🎨</div>
                 Kelola Genre
             </a>
+
+            <div class="admin-nav-label" style="margin-top: 15px;">Sistem Utama</div>
+            <a href="{{ url('/admin/superadmin/trash') }}"
+               class="admin-nav-item {{ $currentPage === 'trash' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:var(--danger);">🗑️</div>
+                Tong Sampah
+            </a>
+            <a href="{{ url('/admin/superadmin/reports') }}"
+               class="admin-nav-item {{ $currentPage === 'reports' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:var(--warning);">🚩</div>
+                Laporan Global
+            </a>
+            <a href="{{ url('/admin/superadmin/broadcast') }}"
+               class="admin-nav-item {{ $currentPage === 'broadcast' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#0ea5e9;">📢</div>
+                Broadcast Notifikasi
+            </a>
+            <a href="{{ url('/admin/superadmin/profanity') }}"
+               class="admin-nav-item {{ $currentPage === 'profanity' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#ec4899;">🤬</div>
+                Filter Kata Kasar
+            </a>
+            <a href="{{ url('/admin/superadmin/logs') }}"
+               class="admin-nav-item {{ $currentPage === 'logs' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#8b5cf6;">📋</div>
+                Log Aktivitas
+            </a>
+            <a href="{{ url('/admin/superadmin/settings') }}"
+               class="admin-nav-item {{ $currentPage === 'settings' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#64748b;">⚙️</div>
+                Pengaturan Sistem
+            </a>
             @else
             <a href="{{ url('/admin/komunitas') }}"
                class="admin-nav-item {{ $currentPage === 'dashboard' ? 'active' : '' }}">

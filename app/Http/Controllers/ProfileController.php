@@ -103,6 +103,8 @@ class ProfileController extends Controller
             }
         }
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Update Profil', "Memperbarui data profil");
+
         return redirect('/profile')->with('success', 'Profil berhasil diperbarui!');
     }
 }

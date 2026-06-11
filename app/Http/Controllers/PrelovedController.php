@@ -103,7 +103,9 @@ class PrelovedController extends Controller
         $data['user_id'] = auth()->id();
         $data['foto_buku'] = $photo;
 
-        PrelovedBook::create($data);
+        $preloved = PrelovedBook::create($data);
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Create Preloved', "Membuat listing preloved baru: {$preloved->judul_buku}");
 
         return redirect('/preloved')->with('success', 'Buku berhasil diposting!');
     }
@@ -139,6 +141,8 @@ class PrelovedController extends Controller
 
         $listing->update($data);
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Update Preloved', "Memperbarui data buku preloved '{$listing->judul_buku}'");
+
         return redirect("/preloved/{$id}")->with('success', 'Buku berhasil diperbarui!');
     }
 
@@ -152,7 +156,10 @@ class PrelovedController extends Controller
         }
 
         $this->uploadService->deleteUpload('preloved', $listing->foto_buku);
+        $listingTitle = $listing->judul_buku;
         $listing->delete();
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Delete Preloved', "Menghapus listing buku preloved '{$listingTitle}'");
 
         return redirect('/preloved')->with('success', 'Buku berhasil dihapus.');
     }
@@ -165,6 +172,8 @@ class PrelovedController extends Controller
         if (!$listing || $listing->user_id !== auth()->id()) abort(403);
 
         $listing->update(['status_buku' => 'terjual']);
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Preloved Terjual', "Menandai buku preloved '{$listing->judul_buku}' sebagai terjual");
 
         return redirect('/profile')->with('success', 'Status buku diperbarui menjadi terjual.');
     }
