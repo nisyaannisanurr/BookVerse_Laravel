@@ -73,6 +73,10 @@ class CommunityController extends Controller
 
         $memberStatus = null;
         if (auth()->check()) {
+            if (auth()->user()->isSuperadmin()) {
+                return redirect("/community/{$id}/feed");
+            }
+
             $memberStatus = AnggotaKomunitas::where('user_id', auth()->id())
                 ->where('komunitas_id', $id)->value('status');
 
@@ -98,6 +102,8 @@ class CommunityController extends Controller
             ['status' => 'pending']
         );
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Gabung Komunitas', "Meminta bergabung ke komunitas '{$community->nama_komunitas}'");
+
         return redirect("/community/{$id}")->with('success', 'Permintaan bergabung telah dikirim. Tunggu persetujuan admin.');
     }
 
@@ -114,6 +120,11 @@ class CommunityController extends Controller
         }
 
         $membership->delete();
+
+        $community = Komunitas::find($id);
+        if ($community) {
+            \App\Models\LogAktivitas::record(auth()->id(), 'Keluar Komunitas', "Keluar dari komunitas '{$community->nama_komunitas}'");
+        }
 
         return redirect('/community')->with('success', 'Anda telah keluar dari komunitas.');
     }
@@ -188,6 +199,8 @@ class CommunityController extends Controller
             'status' => 'berjalan'
         ]);
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Tantangan Komunitas', "Bergabung dengan tantangan membaca di komunitas");
+
         return back()->with('success', 'Berhasil bergabung dengan tantangan membaca!');
     }
 
@@ -203,10 +216,12 @@ class CommunityController extends Controller
         PertanyaanQna::create([
             'qna_id' => $request->qna_id,
             'user_id' => auth()->id(),
-            'pertanyaan' => $request->pertanyaan,
+            'pertanyaan' => $this->profanityFilter->filter($request->pertanyaan),
         ]);
 
-        return back()->with('success', 'Pertanyaan berhasil dikirim!');
+        \App\Models\LogAktivitas::record(auth()->id(), 'Tanya QnA Komunitas', "Mengajukan pertanyaan pada sesi QnA komunitas");
+
+        return back()->with('success', 'Pertanyaan berhasil diajukan!');
     }
 
     public function createPost(Request $request, int $komunitasId)
@@ -232,13 +247,18 @@ class CommunityController extends Controller
             $judul = $this->profanityFilter->filter($judul);
         }
 
-        PostinganKomunitas::create([
+        $postingan = PostinganKomunitas::create([
             'komunitas_id' => $komunitasId,
             'user_id'      => auth()->id(),
             'judul'        => $judul,
             'konten'       => $this->profanityFilter->filter($konten),
             'gambar'       => empty($gambarPaths) ? null : json_encode($gambarPaths),
         ]);
+
+        $komunitas = Komunitas::find($komunitasId);
+        if ($komunitas) {
+            \App\Models\LogAktivitas::record(auth()->id(), 'Create Postingan Komunitas', "Membuat postingan baru di komunitas '{$komunitas->nama_komunitas}'");
+        }
 
         return redirect("/community/{$komunitasId}/feed")->with('success', 'Postingan berhasil dibuat!');
     }
@@ -287,6 +307,8 @@ class CommunityController extends Controller
             'gambar'       => $gambarPath,
         ]);
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Komentar Komunitas', "Mengomentari postingan di komunitas");
+
         return redirect("/community/post/{$postId}")->with('success', 'Komentar berhasil ditambahkan!');
     }
 
@@ -309,6 +331,7 @@ class CommunityController extends Controller
                 'postingan_id' => $id,
                 'user_id' => $userId
             ]);
+            \App\Models\LogAktivitas::record(auth()->id(), 'Like Postingan', "Menyukai postingan di komunitas");
         }
 
         return back();
@@ -411,6 +434,8 @@ class CommunityController extends Controller
         if (auth()->user()->role_id === 3) {
             auth()->user()->update(['role_id' => 2]);
         }
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Create Komunitas', "Mengajukan pembuatan komunitas: {$community->nama_komunitas}");
 
         return redirect('/community')
             ->with('success', 'Komunitas berhasil diajukan! Menunggu persetujuan Superadmin.');

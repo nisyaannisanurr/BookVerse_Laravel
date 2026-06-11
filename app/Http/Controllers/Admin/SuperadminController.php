@@ -99,17 +99,137 @@ class SuperadminController extends Controller
 
         return redirect('/admin/superadmin/books')->with('success', 'Buku berhasil diperbarui!');
     }
-
     public function deleteBook(Request $request)
     {
         $id = (int) $request->book_id;
         $book = Buku::find($id);
         if (!$book) return redirect('/admin/superadmin/books')->with('error', 'Buku tidak ditemukan.');
 
-        $this->uploadService->deleteUpload('covers', $book->cover_buku);
         $book->delete();
 
-        return redirect('/admin/superadmin/books')->with('success', 'Buku berhasil dihapus.');
+        return redirect('/admin/superadmin/books')->with('success', 'Buku berhasil dihapus (masuk ke Tong Sampah).');
+    }
+
+    // ─── TONG SAMPAH (TRASH) ───────────────────────────
+    public function trash()
+    {
+        $books = Buku::onlyTrashed()->orderByDesc('deleted_at')->get();
+        $posts = \App\Models\PostinganKomunitas::onlyTrashed()->with(['user', 'komunitas'])->orderByDesc('deleted_at')->get();
+        return view('admin.superadmin.trash', compact('books', 'posts'));
+    }
+
+    public function restoreBook(Request $request)
+    {
+        $id = (int) $request->book_id;
+        $book = Buku::onlyTrashed()->find($id);
+        if ($book) {
+            $book->restore();
+            return back()->with('success', 'Buku berhasil dipulihkan.');
+        }
+        return back()->with('error', 'Buku tidak ditemukan di Tong Sampah.');
+    }
+
+    public function forceDeleteBook(Request $request)
+    {
+        $id = (int) $request->book_id;
+        $book = Buku::onlyTrashed()->find($id);
+        if ($book) {
+            $this->uploadService->deleteUpload('covers', $book->cover_buku);
+            $book->forceDelete();
+            return back()->with('success', 'Buku dihapus permanen beserta filenya.');
+        }
+        return back()->with('error', 'Buku tidak ditemukan di Tong Sampah.');
+    }
+
+    public function restorePost(Request $request)
+    {
+        $id = (int) $request->post_id;
+        $post = \App\Models\PostinganKomunitas::onlyTrashed()->find($id);
+        if ($post) {
+            $post->restore();
+            return back()->with('success', 'Postingan komunitas berhasil dipulihkan.');
+        }
+        return back()->with('error', 'Postingan tidak ditemukan di Tong Sampah.');
+    }
+
+    public function forceDeletePost(Request $request)
+    {
+        $id = (int) $request->post_id;
+        $post = \App\Models\PostinganKomunitas::onlyTrashed()->find($id);
+        if ($post) {
+            if ($post->gambar) {
+                $gambarPaths = json_decode($post->gambar, true);
+                if (is_array($gambarPaths)) {
+                    foreach ($gambarPaths as $path) {
+                        $this->uploadService->deleteUpload('', $path); // path include 'post_images/'
+                    }
+                }
+            }
+            $post->forceDelete();
+            return back()->with('success', 'Postingan dihapus permanen.');
+        }
+        return back()->with('error', 'Postingan tidak ditemukan di Tong Sampah.');
+    }
+
+    // ─── PUSAT LAPORAN GLOBAL ──────────────────────────
+    public function reports()
+    {
+        $reports = \App\Models\LaporanGlobal::with('pelapor')
+            ->orderByRaw("FIELD(status, 'pending', 'diproses', 'selesai', 'ditolak')")
+            ->orderByDesc('created_at')
+            ->get();
+        return view('admin.superadmin.reports', compact('reports'));
+    }
+
+    public function resolveReport(Request $request)
+    {
+        $id = (int) $request->report_id;
+        $report = \App\Models\LaporanGlobal::find($id);
+        if ($report) {
+            $report->update([
+                'status' => $request->status,
+                'catatan_admin' => $request->catatan_admin
+            ]);
+            return back()->with('success', 'Status laporan berhasil diperbarui.');
+        }
+        return back()->with('error', 'Laporan tidak ditemukan.');
+    }
+
+    // ─── BROADCAST NOTIFIKASI ──────────────────────────
+    public function broadcastForm()
+    {
+        return view('admin.superadmin.broadcast');
+    }
+
+    public function sendBroadcast(Request $request)
+    {
+        $request->validate([
+            'tipe' => 'required|string|max:50',
+            'pesan' => 'required|string|max:500',
+            'url_target' => 'nullable|url',
+        ]);
+
+        $users = User::all();
+        $notifData = [];
+        $now = now();
+
+        foreach ($users as $u) {
+            $notifData[] = [
+                'user_id' => $u->id,
+                'tipe' => $request->tipe,
+                'pesan' => $request->pesan,
+                'url_target' => $request->url_target,
+                'is_read' => 0,
+                'created_at' => $now
+            ];
+        }
+
+        // Chunk insert to handle large amount of users
+        foreach (array_chunk($notifData, 500) as $chunk) {
+            \App\Models\Notifikasi::insert($chunk);
+        }
+
+        return back()->with('success', 'Notifikasi broadcast berhasil dikirim ke ' . count($users) . ' pengguna.');
     }
 
     // ─── USERS ─────────────────────────────────────────
@@ -130,6 +250,61 @@ class SuperadminController extends Controller
         $user->delete();
 
         return redirect('/admin/superadmin/users')->with('success', 'User berhasil dihapus.');
+    }
+
+    public function suspendUser(Request $request)
+    {
+        $id = (int) $request->user_id;
+        $user = User::find($id);
+        if (!$user || $user->isSuperadmin()) {
+            return redirect('/admin/superadmin/users')->with('error', 'User tidak ditemukan atau tidak bisa disuspend.');
+        }
+
+        $newStatus = $user->status_akun === 'aktif' ? 'suspended' : 'aktif';
+        $user->update(['status_akun' => $newStatus]);
+
+        return redirect('/admin/superadmin/users')->with('success', 'Status user berhasil diperbarui.');
+    }
+
+    public function editUserForm(int $id)
+    {
+        $user = User::find($id);
+        if (!$user || $user->isSuperadmin()) {
+            return redirect('/admin/superadmin/users')->with('error', 'User tidak ditemukan atau tidak bisa diedit.');
+        }
+
+        $roles = \Illuminate\Support\Facades\DB::table('roles')->where('id', '!=', 1)->get();
+        return view('admin.superadmin.user_edit', compact('user', 'roles'));
+    }
+
+    public function editUser(Request $request, int $id)
+    {
+        $user = User::find($id);
+        if (!$user || $user->isSuperadmin()) {
+            return redirect('/admin/superadmin/users')->with('error', 'User tidak ditemukan atau tidak bisa diedit.');
+        }
+
+        $request->validate([
+            'username' => 'required|string|max:50|unique:users,username,' . $id,
+            'role_id'  => 'required|in:2,3',
+        ]);
+
+        $data = [
+            'username' => $request->username,
+            'bio'      => $request->bio,
+            'role_id'  => $request->role_id,
+        ];
+
+        if ($request->has('remove_foto')) {
+            if ($user->foto_profil) {
+                $this->uploadService->deleteUpload('profiles', $user->foto_profil);
+                $data['foto_profil'] = null;
+            }
+        }
+
+        $user->update($data);
+
+        return redirect('/admin/superadmin/users')->with('success', 'Data user berhasil diperbarui.');
     }
 
     // ─── COMMUNITIES ───────────────────────────────────
@@ -294,5 +469,71 @@ class SuperadminController extends Controller
 
         $genre->delete();
         return redirect('/admin/superadmin/genres')->with('success', 'Genre berhasil dihapus.');
+    }
+
+    // ─── PENGATURAN SISTEM (SETTINGS) ──────────────────────
+    public function settings()
+    {
+        $maintenance_mode = \App\Models\SystemSetting::getSetting('maintenance_mode', 'false');
+        $preloved_enabled = \App\Models\SystemSetting::getSetting('preloved_enabled', 'true');
+        
+        return view('admin.superadmin.settings', compact('maintenance_mode', 'preloved_enabled'));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $maintenance = $request->has('maintenance_mode') ? 'true' : 'false';
+        $preloved = $request->has('preloved_enabled') ? 'true' : 'false';
+
+        \App\Models\SystemSetting::setSetting('maintenance_mode', $maintenance);
+        \App\Models\SystemSetting::setSetting('preloved_enabled', $preloved);
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Ubah Pengaturan', "Memperbarui pengaturan sistem (Maintenance: {$maintenance})");
+
+        return back()->with('success', 'Pengaturan sistem berhasil diperbarui.');
+    }
+
+    // ─── KAMUS KATA KASAR (PROFANITY FILTER) ───────────────
+    public function profanities()
+    {
+        $words = \App\Models\Profanity::orderByDesc('id')->paginate(30);
+        return view('admin.superadmin.profanity', compact('words'));
+    }
+
+    public function addProfanity(Request $request)
+    {
+        $request->validate(['kata' => 'required|string|max:50|unique:profanities,kata']);
+        
+        \App\Models\Profanity::create(['kata' => strtolower($request->kata)]);
+        \Illuminate\Support\Facades\Cache::forget('profanity_words');
+
+        \App\Models\LogAktivitas::record(auth()->id(), 'Tambah Kata Kasar', "Menambahkan kata '{$request->kata}' ke filter");
+
+        return back()->with('success', 'Kata berhasil ditambahkan ke filter.');
+    }
+
+    public function deleteProfanity(Request $request)
+    {
+        $id = (int) $request->word_id;
+        $word = \App\Models\Profanity::find($id);
+        if ($word) {
+            $wordStr = $word->kata;
+            $word->delete();
+            \Illuminate\Support\Facades\Cache::forget('profanity_words');
+            
+            \App\Models\LogAktivitas::record(auth()->id(), 'Hapus Kata Kasar', "Menghapus kata '{$wordStr}' dari filter");
+            return back()->with('success', 'Kata berhasil dihapus dari filter.');
+        }
+        return back()->with('error', 'Kata tidak ditemukan.');
+    }
+
+    // ─── LOGS ──────────────────────────────────────────────
+    public function logs()
+    {
+        $logs = \App\Models\LogAktivitas::with('user:id,username,email,foto_profil')
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        return view('admin.superadmin.logs', compact('logs'));
     }
 }

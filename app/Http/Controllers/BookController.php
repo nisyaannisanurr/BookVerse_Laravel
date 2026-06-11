@@ -94,6 +94,8 @@ class BookController extends Controller
             $this->recService->logBehavior(auth()->id(), 'beri_rating_tinggi', 5, $book->genre_buku, $book->judul);
         }
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Rating Buku', "Memberikan rating {$rating} bintang untuk buku '{$book->judul}'");
+
         return redirect("/books/{$bookId}")->with('success', 'Ulasan berhasil disimpan!');
     }
 
@@ -121,13 +123,20 @@ class BookController extends Controller
             $this->recService->logBehavior(auth()->id(), 'tambah_wishlist', 5, $book->genre_buku, $book->judul);
         }
 
+        \App\Models\LogAktivitas::record(auth()->id(), 'Rak Buku', "Menambahkan buku '{$book->judul}' ke rak ({$status})");
+
         return redirect("/books/{$bookId}")->with('success', 'Buku ditambahkan ke rak!');
     }
 
     public function removeFromShelf(Request $request)
     {
         $bookId = (int) $request->buku_id;
+        $book = Buku::find($bookId);
         RakBukuUser::where('user_id', auth()->id())->where('buku_id', $bookId)->delete();
+
+        if ($book) {
+            \App\Models\LogAktivitas::record(auth()->id(), 'Rak Buku', "Menghapus buku '{$book->judul}' dari rak");
+        }
 
         $redirect = $request->redirect ?? '/profile';
         return redirect($redirect);

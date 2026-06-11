@@ -145,6 +145,61 @@
 @endif
 
 <!-- ═══════════════════════════════════════
+     GLOBAL REPORT MODAL
+     ═══════════════════════════════════════ -->
+@auth
+<div id="globalReportModal" class="search-overlay" style="align-items:center; justify-content:center; padding: 20px; z-index: 99999;">
+    <div style="background:var(--bg-card); width:100%; max-width:500px; border-radius:24px; padding:30px; position:relative; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <button type="button" onclick="closeReportModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+        
+        <h2 style="font-family:var(--font-display); font-size:1.5rem; color:var(--danger); margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.8rem;">🚩</span> Laporkan Pelanggaran
+        </h2>
+        
+        <form id="globalReportForm" action="{{ url('/report') }}" method="POST">
+            @csrf
+            <input type="hidden" name="tipe_entitas" id="modal-tipe_entitas" value="">
+            <input type="hidden" name="entitas_id" id="modal-entitas_id" value="">
+            
+            <!-- User Info (Readonly) -->
+            <div style="background:var(--bg-surface); padding:15px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">Nama Pelapor:</span>
+                    <strong style="color:var(--text);">{{ auth()->user()->username }}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+                    <span style="color:var(--text-muted);">Email:</span>
+                    <strong style="color:var(--text);">{{ auth()->user()->email }}</strong>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="display:block; font-weight:600; margin-bottom:8px; color:var(--text);">Alasan Utama <span style="color:var(--danger);">*</span></label>
+                <select name="alasan" id="modal-alasan-select" class="form-control" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--bg-surface);" required>
+                    <option value="" disabled selected>-- Pilih Alasan --</option>
+                    <option value="Konten tidak pantas / Melanggar hukum">Konten tidak pantas / Melanggar hukum</option>
+                    <option value="Penipuan / Spam">Penipuan / Spam</option>
+                    <option value="Ujaran kebencian / Harassment">Ujaran kebencian / Pelecehan</option>
+                    <option value="Pelanggaran hak cipta">Pelanggaran hak cipta</option>
+                    <option value="Lainnya">Lainnya (Tulis detail di bawah)</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:25px;">
+                <label style="display:block; font-weight:600; margin-bottom:8px; color:var(--text);">Detail Tambahan (Opsional)</label>
+                <textarea name="detail_tambahan" rows="3" class="form-control" placeholder="Jelaskan lebih spesifik apa yang terjadi..." style="width:100%; padding:12px; border:1px solid var(--border); border-radius:12px; resize:vertical; background:var(--bg-surface);"></textarea>
+            </div>
+            
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button type="button" onclick="closeReportModal()" class="btn btn-ghost" style="padding:10px 20px; border-radius:50px; font-weight:600;">Batal</button>
+                <button type="submit" class="btn" style="background:var(--danger); color:white; padding:10px 24px; border-radius:50px; font-weight:bold; box-shadow:0 4px 14px rgba(220, 38, 38, 0.4);">Kirim Laporan</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endauth
+
+<!-- ═══════════════════════════════════════
      PAGE CONTENT
      ═══════════════════════════════════════ -->
 <div class="page-wrapper">
@@ -200,6 +255,43 @@
 </footer>
 
 <script src="{{ asset('js/app.js') }}?v={{ time() }}"></script>
+<script>
+    function openReportModal(tipeEntitas, entitasId) {
+        console.log("Opening report modal for: " + tipeEntitas + " " + entitasId);
+        const modal = document.getElementById('globalReportModal');
+        if (modal) {
+            document.getElementById('modal-tipe_entitas').value = tipeEntitas;
+            document.getElementById('modal-entitas_id').value = entitasId;
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden'; // prevent scrolling
+        } else {
+            console.error("Modal element not found!");
+            alert("Terjadi kesalahan, modal tidak ditemukan.");
+        }
+    }
+    
+    function closeReportModal() {
+        const modal = document.getElementById('globalReportModal');
+        if (modal) {
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+            document.getElementById('globalReportForm').reset();
+        }
+    }
+    
+    // Fallback for old prompt
+    function submitReportPrompt(formId, inputId, message) {
+        let reason = prompt(message);
+        if (reason !== null) {
+            if (reason.trim() === '') {
+                alert('Alasan pelaporan tidak boleh kosong.');
+            } else {
+                document.getElementById(inputId).value = reason.trim();
+                document.getElementById(formId).submit();
+            }
+        }
+    }
+</script>
 @stack('scripts')
 </body>
 </html>

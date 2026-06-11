@@ -78,13 +78,18 @@
                 <a href="{{ route('community.chat', $community->id) }}" class="btn" style="background: var(--community-theme); color: white; border-radius: 20px; padding: 10px 24px; font-weight: bold; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;">
                     <span style="font-size: 1.2rem;">💬</span> Buka Live Chat
                 </a>
-                @if(auth()->check() && auth()->id() !== $community->creator_id && $members->contains('user_id', auth()->id()))
+                @if(auth()->check() && !auth()->user()->isSuperadmin() && auth()->id() !== $community->creator_id && $members->contains('user_id', auth()->id()))
                 <form action="{{ route('community.leave', $community->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin keluar dari komunitas ini?');" style="margin: 0;">
                     @csrf
                     <button type="submit" class="btn" style="background: #fee2e2; color: #dc2626; border-radius: 20px; padding: 10px 24px; font-weight: bold; border: 1px solid #fca5a5; cursor: pointer;">
                         Keluar Komunitas
                     </button>
                 </form>
+                @endif
+                @if(auth()->check() && auth()->id() !== $community->creator_id)
+                <button type="button" onclick="openReportModal('komunitas', {{ $community->id }})" class="btn" style="background: transparent; color: #dc2626; border-radius: 20px; padding: 10px 16px; font-weight: bold; border: 1px solid #dc2626; cursor: pointer;">
+                    🚩 Laporkan
+                </button>
                 @endif
             </div>
         </div>

@@ -206,6 +206,14 @@
                         ❌ Buku Sudah Terjual
                     </button>
                 @endif
+
+                @auth
+                    @if($listing->user_id !== auth()->id())
+                    <button type="button" onclick="openReportModal('preloved', {{ $listing->id }})" class="btn btn-ghost w-full" style="color:var(--danger); border-radius:50px; font-weight:bold; margin-top: 15px;">
+                        🚩 Laporkan Item
+                    </button>
+                    @endif
+                @endauth
             </div>
             
             @auth
