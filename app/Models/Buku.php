@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Buku extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'buku';
 
     // Tabel buku hanya punya created_at, tidak ada updated_at

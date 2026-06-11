@@ -46,16 +46,25 @@
     <div class="card-body">
         <h3 class="mb-md">✅ Anggota ({{ $approvedMembers->count() }})</h3>
         @foreach($approvedMembers as $member)
-        <div class="d-flex align-center gap-sm" style="padding:var(--space-sm) 0;border-bottom:1px solid var(--border);">
-            @if($member->user && $member->user->foto_profil)
-                <img src="{{ BookVerseHelper::uploadUrl('profiles', $member->user->foto_profil) }}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
-            @else
-                <div class="placeholder-img" style="width:36px;height:36px;border-radius:50%;font-size:0.9rem;">👤</div>
-            @endif
-            <div>
-                <div style="font-weight:600;">{{ $member->user->username ?? 'Unknown' }}</div>
-                <div class="text-xs text-muted">{{ $member->user->email ?? '' }}</div>
+        <div class="d-flex align-center gap-sm" style="padding:var(--space-sm) 0;border-bottom:1px solid var(--border); justify-content: space-between;">
+            <div class="d-flex align-center gap-sm">
+                @if($member->user && $member->user->foto_profil)
+                    <img src="{{ BookVerseHelper::uploadUrl('profiles', $member->user->foto_profil) }}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                @else
+                    <div class="placeholder-img" style="width:36px;height:36px;border-radius:50%;font-size:0.9rem;">👤</div>
+                @endif
+                <div>
+                    <div style="font-weight:600;">{{ $member->user->username ?? 'Unknown' }}</div>
+                    <div class="text-xs text-muted">{{ $member->user->email ?? '' }}</div>
+                </div>
             </div>
+            @if($member->user_id !== auth()->id())
+                <form method="POST" action="{{ route('admin.komunitas.members.kick') }}" onsubmit="return confirm('Apakah Anda yakin ingin mengeluarkan anggota ini?');">
+                    @csrf
+                    <input type="hidden" name="member_id" value="{{ $member->id }}">
+                    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger); border: 1px solid var(--danger);">Keluarkan</button>
+                </form>
+            @endif
         </div>
         @endforeach
     </div>
