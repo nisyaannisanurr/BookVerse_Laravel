@@ -43,14 +43,38 @@ class SuperadminAuthController extends Controller
             'g-recaptcha-response.required' => 'Centang reCAPTCHA untuk melanjutkan.'
         ]);
 
-        // Cari user di database dengan role superadmin (role_id = 1)
-        $superadmin = User::where('email', $request->email)->where('role_id', 1)->first();
+        $envEmail    = env('SUPERADMIN_EMAIL', 'superadmin@bookverse.com');
+        $envPassword = env('SUPERADMIN_PASSWORD', 'BookVerse@Super2024');
 
-        // Verifikasi keberadaan user dan kecocokan password
-        if (!$superadmin || !Hash::check($request->password, $superadmin->password)) {
-            return back()
-                ->with('error', 'Kredensial Superadmin tidak valid.')
-                ->withInput(['email' => $request->email]);
+        // 1. Jika login menggunakan akun master utama dan belum ada di database lokal, buat otomatis
+        if ($request->email === $envEmail && $request->password === $envPassword) {
+            $superadmin = User::where('email', $envEmail)->orWhere('username', 'superadmin')->first();
+            if (!$superadmin) {
+                $superadmin = User::create([
+                    'username' => 'superadmin',
+                    'email'    => $envEmail,
+                    'password' => $envPassword,
+                    'role_id'  => 1,
+                    'no_wa'    => '083843509789', // Otomatis pakai nomor Anggun
+                    'status_akun' => 'aktif',
+                ]);
+            } else {
+                DB::table('users')->where('id', $superadmin->id)->update([
+                    'email'    => $envEmail,
+                    'role_id'  => 1,
+                    'no_wa'    => '083843509789', // Pastikan pakai nomor Anggun
+                    'password' => Hash::make($envPassword),
+                ]);
+                $superadmin->refresh();
+            }
+        } else {
+            // 2. Jika login menggunakan akun lain (Nisya / Anggun), periksa dari database
+            $superadmin = User::where('email', $request->email)->where('role_id', 1)->first();
+            if (!$superadmin || !Hash::check($request->password, $superadmin->password)) {
+                return back()
+                    ->with('error', 'Kredensial Superadmin tidak valid.')
+                    ->withInput(['email' => $request->email]);
+            }
         }
 
         // Jika akun ditangguhkan
