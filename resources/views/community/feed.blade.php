@@ -131,7 +131,7 @@
                     <div class="d-flex flex-column gap-sm">
                         @foreach($bookshelf as $item)
                         <div style="display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
-                            <img src="{{ asset('storage/' . $item->buku->cover_buku) }}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            <img src="{{ BookVerseHelper::uploadUrl('covers', $item->buku->cover_buku) }}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                             <div style="flex: 1; overflow: hidden;">
                                 <h4 style="font-size: 0.85rem; margin: 0 0 4px 0; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;"><a href="{{ url('/books/' . $item->buku_id) }}" style="color: inherit; text-decoration: none;">{{ $item->buku->judul }}</a></h4>
                                 <span style="font-size: 0.65rem; padding: 3px 8px; border-radius: 20px; background: {{ $item->tipe === 'wajib_baca' ? '#fef08a' : '#e0e7ff' }}; color: {{ $item->tipe === 'wajib_baca' ? '#854d0e' : '#3730a3' }}; font-weight: 700;">
@@ -157,10 +157,12 @@
                     <div class="d-flex flex-column gap-sm">
                         @foreach($challenges as $challenge)
                         <div style="padding: 10px; background: var(--bg-body); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                            <h4 style="font-size: 0.9rem; margin: 0 0 4px 0; line-height:1.2;">{{ $challenge->judul }}</h4>
+                            <h4 style="font-size: 0.9rem; margin: 0 0 4px 0; line-height:1.2;">
+                                <a href="{{ route('community.challenge.show', ['id' => $community->id, 'challengeId' => $challenge->id]) }}" style="color: inherit; text-decoration: none;">{{ $challenge->judul }}</a>
+                            </h4>
                             <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px 0;">Target: {{ $challenge->target_buku }} Buku</p>
                             @if(isset($joinedChallengeIds) && in_array($challenge->id, $joinedChallengeIds))
-                                <div style="background: #e0f2fe; color: #0284c7; padding: 6px; border-radius: 6px; font-size: 0.75rem; text-align: center; font-weight: 700;">✓ Sedang Mengikuti</div>
+                                <a href="{{ route('community.challenge.show', ['id' => $community->id, 'challengeId' => $challenge->id]) }}" style="display: block; background: #e0f2fe; color: #0284c7; padding: 6px; border-radius: 6px; font-size: 0.75rem; text-align: center; font-weight: 700; text-decoration: none;">✓ Sedang Mengikuti</a>
                             @else
                                 <form action="{{ route('community.challenge.join', $community->id) }}" method="POST">
                                     @csrf
@@ -267,6 +269,23 @@
                     <div style="flex: 1;">
                         <input type="text" name="judul" class="form-input mb-sm" placeholder="Judul diskusi (opsional)" style="background: transparent; border: none; font-size: 1rem; font-weight: 600; padding: 0; outline: none; width: 100%; box-shadow: none;">
                         <textarea name="konten" class="form-textarea" placeholder="Apa yang Anda pikirkan, {{ auth()->check() ? auth()->user()->username : 'Teman' }}?" required rows="2" style="background: transparent; border: none; padding: 0; resize: none; font-size: 1.1rem; outline: none; width: 100%; box-shadow: none;"></textarea>
+                        
+                        @php
+                            $activeChallenges = isset($joinedChallengeIds) && !empty($joinedChallengeIds) 
+                                ? collect($challenges)->whereIn('id', $joinedChallengeIds) 
+                                : collect();
+                        @endphp
+                        
+                        @if($activeChallenges->count() > 0)
+                            <div style="margin-top: 10px;">
+                                <select name="tantangan_id" style="padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); font-size: 0.85rem; background: var(--bg-body); color: var(--text-secondary); outline: none;">
+                                    <option value="">Tandai tantangan... (Opsional)</option>
+                                    @foreach($activeChallenges as $ac)
+                                        <option value="{{ $ac->id }}">🎯 {{ $ac->judul }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
                         <!-- Image Preview Container -->
                         <div id="imagePreviewContainer" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
                     </div>
@@ -387,6 +406,12 @@
                     @if($post->judul)
                         <a href="{{ url('/community/post/' . $post->id) }}" class="post-title" style="display:block;color:var(--text-primary);text-decoration:none;font-size:1.2rem;font-weight:700;margin-bottom:10px;">
                             {{ $post->judul }}
+                        </a>
+                    @endif
+
+                    @if($post->tantangan_id && $post->tantangan)
+                        <a href="{{ route('community.challenge.show', ['id' => $community->id, 'challengeId' => $post->tantangan_id]) }}" style="display: inline-block; background: rgba(139, 92, 246, 0.1); color: var(--community-theme); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 12px; text-decoration: none;">
+                            🎯 Terkait Tantangan: {{ $post->tantangan->judul }}
                         </a>
                     @endif
 

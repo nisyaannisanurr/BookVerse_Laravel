@@ -54,6 +54,36 @@
     --sidebar-w: 240px;
     --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
     --transition-slow: 0.35s cubic-bezier(0.4,0,0.2,1);
+
+    --gradient-hero: linear-gradient(135deg, #ede9fb 0%, #f5f0f0 60%, #fdf3e3 100%);
+    --gradient-light: linear-gradient(135deg, #F8F5FF 0%, #EFEAFB 100%);
+    --gradient-donasi: linear-gradient(135deg, #f5f3ff 0%, #e0e7ff 50%, #f8fafc 100%);
+    --gradient-warning: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+    --bg:           #121212;
+    --bg-white:     #1e1e1e;
+    --bg-surface:   #252525;
+    --bg-card:      #1e1e1e;
+    --border:       #333333;
+    --border-light: #2c2c2c;
+
+    --text:         #e4e4e7;
+    --text-secondary: #a1a1aa;
+    --text-muted:   #71717a;
+
+    --primary:      #a78bfa;
+    --primary-dark: #8b5cf6;
+    --primary-light:#2e1065;
+    --accent:       #fbbf24;
+    --accent-light: #78350f;
+
+    --gradient-hero: linear-gradient(135deg, #1e1b2e 0%, #201e23 60%, #292419 100%);
+    --gradient-light: linear-gradient(135deg, #16141c 0%, #1e192a 100%);
+    --gradient-donasi: linear-gradient(135deg, #1b1929 0%, #171b29 50%, #16181b 100%);
+    --gradient-warning: linear-gradient(135deg, #2a2512 0%, #28210f 100%);
 }
 
 /* ── Reset ── */
@@ -107,7 +137,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
 
 /* ── Placeholder ── */
 .placeholder-img {
-    background: linear-gradient(145deg, #ede9fb 0%, #d8d0f7 100%);
+    background: var(--gradient-hero);
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 8px;
     font-size: 2rem;
@@ -662,7 +692,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
 .auth-page {
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #ede9fb 0%, #f5f0f0 50%, #fdf3e3 100%);
+    background: var(--gradient-hero);
     padding: var(--space-lg);
 }
 .auth-card {
@@ -809,7 +839,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
    HERO SECTION (Home)
    ══════════════════════════════════════════════════════ */
 .hero {
-    background: linear-gradient(135deg, #ede9fb 0%, #f5f0f0 60%, #fdf3e3 100%);
+    background: var(--gradient-hero);
     padding: var(--space-2xl) 0;
     margin-bottom: var(--space-xl);
 }
@@ -962,4 +992,21 @@ button { cursor: pointer; font-family: var(--font-sans); }
     .hero-title { font-size: 1.8rem; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .features-bar { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Responsive Table Wrapper */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: var(--space-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.table-responsive table {
+    width: 100%;
+    min-width: 600px;
+    margin: 0;
+    border: none;
 }

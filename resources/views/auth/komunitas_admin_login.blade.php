@@ -179,8 +179,8 @@
                            placeholder="Masukkan password" required>
                 </div>
                 <div class="form-group">
-                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-                    <div class="g-recaptcha" data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"></div>
+                    <script src="https://www.recaptcha.net/recaptcha/api.js" async defer></script>
+                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
                     @error('g-recaptcha-response')
                         <span style="color:#c0392b;font-size:0.8rem;margin-top:5px;display:block;">{{ $message }}</span>
                     @enderror

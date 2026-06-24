@@ -195,13 +195,32 @@ class CommunityController extends Controller
             'tantangan_id' => $request->tantangan_id,
             'user_id' => auth()->id()
         ], [
-            'buku_selesai' => 0,
-            'status' => 'berjalan'
+            'buku_dibaca' => 0,
+            'status' => 'ongoing'
         ]);
 
         \App\Models\LogAktivitas::record(auth()->id(), 'Tantangan Komunitas', "Bergabung dengan tantangan membaca di komunitas");
 
         return back()->with('success', 'Berhasil bergabung dengan tantangan membaca!');
+    }
+
+    public function showChallenge(int $komunitasId, int $challengeId)
+    {
+        $community = Komunitas::find($komunitasId);
+        if (!$community) abort(404);
+
+        $challenge = TantanganMembaca::with(['peserta.user', 'postingan' => function($q) {
+            $q->orderBy('created_at', 'desc');
+        }, 'postingan.user', 'postingan.likes'])->find($challengeId);
+
+        if (!$challenge || $challenge->komunitas_id !== $komunitasId) abort(404);
+
+        $pesertaQuery = PesertaTantangan::where('tantangan_id', $challengeId)
+            ->with(['user', 'user.lencana.lencana'])
+            ->orderBy('buku_dibaca', 'desc')
+            ->get();
+
+        return view('community.challenge_show', compact('community', 'challenge', 'pesertaQuery'));
     }
 
     public function askQna(Request $request, int $komunitasId)
@@ -247,13 +266,34 @@ class CommunityController extends Controller
             $judul = $this->profanityFilter->filter($judul);
         }
 
+        $tantanganId = $request->tantangan_id ?: null;
+
         $postingan = PostinganKomunitas::create([
             'komunitas_id' => $komunitasId,
             'user_id'      => auth()->id(),
             'judul'        => $judul,
             'konten'       => $this->profanityFilter->filter($konten),
             'gambar'       => empty($gambarPaths) ? null : json_encode($gambarPaths),
+            'tantangan_id' => $tantanganId,
         ]);
+
+        if ($tantanganId) {
+            $peserta = \App\Models\PesertaTantangan::where('tantangan_id', $tantanganId)
+                        ->where('user_id', auth()->id())
+                        ->where('status', 'ongoing')
+                        ->first();
+            
+            if ($peserta) {
+                $peserta->increment('buku_dibaca');
+                
+                $tantangan = \App\Models\TantanganMembaca::find($tantanganId);
+                if ($tantangan && $peserta->buku_dibaca >= $tantangan->target_buku) {
+                    $peserta->status = 'completed';
+                    $peserta->save();
+                    \App\Models\LogAktivitas::record(auth()->id(), 'Tantangan Selesai', "Menyelesaikan tantangan membaca: {$tantangan->judul}");
+                }
+            }
+        }
 
         $komunitas = Komunitas::find($komunitasId);
         if ($komunitas) {
@@ -430,10 +470,8 @@ class CommunityController extends Controller
             'status'           => 'pending',
         ]);
 
-        // Upgrade role user biasa → admin komunitas
-        if (auth()->user()->role_id === 3) {
-            auth()->user()->update(['role_id' => 2]);
-        }
+        // TIDAK upgrade role di sini — role akan diupgrade oleh Superadmin
+        // saat komunitas di-approve via SuperadminController::approveCommunity()
 
         \App\Models\LogAktivitas::record(auth()->id(), 'Create Komunitas', "Mengajukan pembuatan komunitas: {$community->nama_komunitas}");
 

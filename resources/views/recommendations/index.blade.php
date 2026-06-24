@@ -6,7 +6,7 @@
 
 {{-- ─── HEADER BANNER ────────────────────────────────────── --}}
 <div style="
-    background: linear-gradient(135deg, #F8F5FF 0%, #EFEAFB 100%);
+    background: var(--gradient-light);
     border-radius: 24px;
     padding: 0 50px;
     margin-bottom: 24px;

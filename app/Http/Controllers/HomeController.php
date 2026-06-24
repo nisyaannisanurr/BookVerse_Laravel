@@ -27,7 +27,26 @@ class HomeController extends Controller
             ->limit(3)
             ->get();
 
-        return view('home.index', compact('trendingBooks', 'popularCommunities', 'featuredReviews'));
+        $topDonators = \App\Models\User::whereHas('donasiBuku', function($q) {
+                $q->where('status_pengiriman', 'diterima');
+            })
+            ->withSum(['donasiBuku as total_donasi' => function($q) {
+                $q->where('status_pengiriman', 'diterima');
+            }], 'jumlah')
+            ->orderByDesc('total_donasi')
+            ->limit(4)
+            ->get();
+
+        return view('home.index', compact('trendingBooks', 'popularCommunities', 'featuredReviews', 'topDonators'));
+    }
+
+    public function panduan()
+    {
+        $panduans = \App\Models\Panduan::orderBy('kategori')->orderBy('urutan')->get();
+        // Kelompokkan berdasarkan kategori
+        $groupedPanduans = $panduans->groupBy('kategori');
+        
+        return view('panduan', compact('groupedPanduans'));
     }
 
     public function submitReport(Request $request)

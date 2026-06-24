@@ -11,6 +11,7 @@ use App\Models\Notifikasi;
 use App\Models\PrelovedBook;
 use App\Models\RatingBuku;
 use App\Models\User;
+use App\Models\LogAktivitas;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 
@@ -32,9 +33,31 @@ class SuperadminController extends Controller
             'pending_communities' => Komunitas::where('status', 'pending')->count(),
             'total_preloved'    => PrelovedBook::count(),
             'total_ratings'     => RatingBuku::count(),
+            'pending_mitra'     => \App\Models\MitraVerification::where('status_verifikasi', 'pending')->count(),
         ];
 
-        return view('admin.superadmin.dashboard', compact('stats'));
+        // Chart Data: 6 Months Growth
+        $chartData = [
+            'labels' => [],
+            'users' => [],
+            'donations' => []
+        ];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $chartData['labels'][] = $month->format('M Y');
+            
+            $chartData['users'][] = User::whereYear('created_at', $month->year)
+                                        ->whereMonth('created_at', $month->month)
+                                        ->count();
+                                        
+            $chartData['donations'][] = \App\Models\DonasiBuku::where('status_pengiriman', 'diterima')
+                                        ->whereYear('created_at', $month->year)
+                                        ->whereMonth('created_at', $month->month)
+                                        ->sum('jumlah');
+        }
+
+        return view('admin.superadmin.dashboard', compact('stats', 'chartData'));
     }
 
     // ─── BOOKS ─────────────────────────────────────────
@@ -120,7 +143,6 @@ class SuperadminController extends Controller
 
     public function restoreBook(Request $request)
     {
-        $id = (int) $request->book_id;
         $book = Buku::onlyTrashed()->find($id);
         if ($book) {
             $book->restore();
@@ -188,8 +210,55 @@ class SuperadminController extends Controller
         if ($report) {
             $report->update([
                 'status' => $request->status,
-                'catatan_admin' => $request->catatan_admin
+                'catatan_admin' => $request->catatan_admin ?? null
             ]);
+
+            if ($request->status === 'selesai') {
+                if ($report->tipe_entitas === 'mitra') {
+                    $mitraId = $report->entitas_id;
+                    
+                    // Demote user role back to 3 (User)
+                    $user = \App\Models\User::find($mitraId);
+                    if ($user && $user->role_id == 2) {
+                        $user->update(['role_id' => 3]);
+                    }
+    
+                    // Reject MitraVerification
+                    $mitraVer = \App\Models\MitraVerification::where('user_id', $mitraId)->first();
+                    if ($mitraVer) {
+                        $mitraVer->update([
+                            'status_verifikasi' => 'rejected',
+                            'catatan_admin' => 'Akun dinonaktifkan karena pelanggaran / laporan penipuan.'
+                        ]);
+                    }
+    
+                    // Optional: Close all active campaigns
+                    \App\Models\CampaignDonasi::where('user_id', $mitraId)
+                        ->where('status', 'active')
+                        ->update(['status' => 'cancelled']);
+    
+                    \App\Models\Notifikasi::create([
+                        'user_id'    => $mitraId,
+                        'tipe'       => 'mitra_banned',
+                        'pesan'      => 'Akun Mitra Anda telah dinonaktifkan karena melanggar ketentuan atau terindikasi penipuan.',
+                        'url_target' => null,
+                    ]);
+                } elseif ($report->tipe_entitas === 'komunitas') {
+                    $komunitas = \App\Models\Komunitas::find($report->entitas_id);
+                    if ($komunitas) $komunitas->update(['status' => 'nonaktif']);
+                } elseif ($report->tipe_entitas === 'preloved') {
+                    $preloved = \App\Models\PrelovedBook::find($report->entitas_id);
+                    if ($preloved) $preloved->update(['status_buku' => 'ditangguhkan']);
+                } elseif ($report->tipe_entitas === 'user') {
+                    $user = \App\Models\User::find($report->entitas_id);
+                    if ($user) $user->update(['status_akun' => 'suspended']);
+                } elseif ($report->tipe_entitas === 'postingan') {
+                    $postingan = \App\Models\PostinganKomunitas::find($report->entitas_id);
+                    if ($postingan) $postingan->delete();
+                }
+            }
+
+            \App\Models\LogAktivitas::record(auth()->id(), 'Resolve Report', "Mengubah status laporan ID {$report->id} menjadi {$request->status}");
             return back()->with('success', 'Status laporan berhasil diperbarui.');
         }
         return back()->with('error', 'Laporan tidak ditemukan.');
@@ -239,6 +308,13 @@ class SuperadminController extends Controller
         return view('admin.superadmin.users', compact('users'));
     }
 
+    public function detailUser($id)
+    {
+        $user = User::with(['prelovedBooks', 'komunitas'])->findOrFail($id);
+        $totalDonasi = \App\Models\DonasiBuku::where('user_id', $id)->sum('jumlah') ?? 0;
+        return view('admin.superadmin.detail_user', compact('user', 'totalDonasi'));
+    }
+
     public function deleteUser(Request $request)
     {
         $id = (int) $request->user_id;
@@ -286,7 +362,7 @@ class SuperadminController extends Controller
 
         $request->validate([
             'username' => 'required|string|max:50|unique:users,username,' . $id,
-            'role_id'  => 'required|in:2,3',
+            'role_id'  => 'required|in:2,3,4',
         ]);
 
         $data = [
@@ -311,7 +387,60 @@ class SuperadminController extends Controller
     public function communities()
     {
         $communities = Komunitas::withMemberCount()->orderByDesc('created_at')->get();
-        return view('admin.superadmin.communities', compact('communities'));
+        
+        $chartData = [
+            'labels' => [],
+            'communities' => [],
+            'members' => [],
+            'posts' => []
+        ];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $chartData['labels'][] = $month->format('M Y');
+            
+            $chartData['communities'][] = Komunitas::whereYear('created_at', $month->year)
+                                        ->whereMonth('created_at', $month->month)
+                                        ->count();
+                                        
+            $chartData['members'][] = \App\Models\AnggotaKomunitas::whereYear('tanggal_bergabung', $month->year)
+                                        ->whereMonth('tanggal_bergabung', $month->month)
+                                        ->count();
+                                        
+            $chartData['posts'][] = \App\Models\PostinganKomunitas::whereYear('created_at', $month->year)
+                                        ->whereMonth('created_at', $month->month)
+                                        ->count();
+        }
+        
+        return view('admin.superadmin.communities', compact('communities', 'chartData'));
+    }
+
+    public function detailCommunity($id)
+    {
+        $community = Komunitas::with(['creator', 'anggota.user', 'postingan.user'])->findOrFail($id);
+        
+        $chartData = [
+            'labels' => [],
+            'members' => [],
+            'posts' => []
+        ];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $chartData['labels'][] = $month->format('M Y');
+            
+            $chartData['members'][] = \App\Models\AnggotaKomunitas::where('komunitas_id', $id)
+                                        ->whereYear('tanggal_bergabung', $month->year)
+                                        ->whereMonth('tanggal_bergabung', $month->month)
+                                        ->count();
+                                        
+            $chartData['posts'][] = \App\Models\PostinganKomunitas::where('komunitas_id', $id)
+                                        ->whereYear('created_at', $month->year)
+                                        ->whereMonth('created_at', $month->month)
+                                        ->count();
+        }
+
+        return view('admin.superadmin.detail_community', compact('community', 'chartData'));
     }
 
     public function approveCommunity(Request $request)
@@ -328,12 +457,23 @@ class SuperadminController extends Controller
             ['status' => 'approved']
         );
 
+        // Upgrade creator ke Admin Komunitas (role 2) jika masih User biasa (role 3)
+        // Ini dilakukan di sini (bukan saat create) sesuai prinsip Least Privilege
+        if ($community->creator_id) {
+            $creator = User::find($community->creator_id);
+            if ($creator && $creator->role_id === 3) {
+                $creator->update(['role_id' => 2]);
+            }
+        }
+
         Notifikasi::create([
             'user_id'    => $community->creator_id,
             'tipe'       => 'komunitas_disetujui',
-            'pesan'      => 'Komunitas "' . $community->nama_komunitas . '" telah disetujui!',
+            'pesan'      => 'Komunitas "' . $community->nama_komunitas . '" telah disetujui! Anda sekarang menjadi Admin Komunitas.',
             'url_target' => "/community/{$id}/feed",
         ]);
+
+        LogAktivitas::record(auth()->id(), 'Approve Komunitas', "Menyetujui komunitas: {$community->nama_komunitas}");
 
         return redirect('/admin/superadmin/communities')->with('success', 'Komunitas berhasil disetujui!');
     }
@@ -374,6 +514,12 @@ class SuperadminController extends Controller
     {
         $listings = PrelovedBook::with('user:id,username')->orderByDesc('created_at')->get();
         return view('admin.superadmin.preloved', compact('listings'));
+    }
+
+    public function detailPreloved($id)
+    {
+        $book = PrelovedBook::with('penjual')->findOrFail($id);
+        return view('admin.superadmin.detail_preloved', compact('book'));
     }
 
     public function suspendListing(Request $request)
@@ -535,5 +681,308 @@ class SuperadminController extends Controller
             ->paginate(20);
 
         return view('admin.superadmin.logs', compact('logs'));
+    }
+
+    // ─── INSTANSI DAERAH (WILAYAH MITRA) ───────────────────
+    public function instansiDaerah()
+    {
+        $daerahs = \App\Models\InstansiDaerah::withCount('mitraVerifications')->orderBy('nama_daerah')->get();
+        return view('admin.superadmin.instansi-daerah', compact('daerahs'));
+    }
+
+    public function createInstansiDaerah(Request $request)
+    {
+        $request->validate(['nama_daerah' => 'required|string|max:255|unique:instansi_daerahs']);
+        \App\Models\InstansiDaerah::create(['nama_daerah' => $request->nama_daerah, 'is_active' => true]);
+        return back()->with('success', 'Instansi daerah berhasil ditambahkan.');
+    }
+
+    public function editInstansiDaerah(Request $request, int $id)
+    {
+        $daerah = \App\Models\InstansiDaerah::find($id);
+        if (!$daerah) return back()->with('error', 'Instansi daerah tidak ditemukan.');
+
+        $request->validate(['nama_daerah' => 'required|string|max:255|unique:instansi_daerahs,nama_daerah,' . $id]);
+        $daerah->update([
+            'nama_daerah' => $request->nama_daerah,
+            'is_active'   => $request->has('is_active') ? true : false,
+        ]);
+        return back()->with('success', 'Instansi daerah berhasil diperbarui.');
+    }
+
+    public function deleteInstansiDaerah(Request $request)
+    {
+        $daerah = \App\Models\InstansiDaerah::find($request->daerah_id);
+        if (!$daerah) return back()->with('error', 'Instansi daerah tidak ditemukan.');
+        if ($daerah->mitraVerifications()->count() > 0) {
+            return back()->with('error', 'Tidak bisa menghapus daerah yang sudah memiliki mitra. Silakan nonaktifkan saja.');
+        }
+        $daerah->delete();
+        return back()->with('success', 'Instansi daerah berhasil dihapus.');
+    }
+
+    // ─── KELOLA MITRA ─────────────────────────────────
+    public function verifikasiMitra()
+    {
+        $pendingVerifications = \App\Models\MitraVerification::with(['user', 'instansiDaerah'])
+            ->where('status_verifikasi', 'pending')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $allMitra = \App\Models\MitraVerification::with(['user', 'instansiDaerah'])
+            ->orderByRaw("FIELD(status_verifikasi, 'pending', 'approved', 'rejected')")
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pendingCampaigns = \App\Models\CampaignDonasi::where('status', 'pending')->with('user.mitraVerification')->get();
+
+        return view('admin.superadmin.verifikasi-mitra', compact('pendingVerifications', 'allMitra', 'pendingCampaigns'));
+    }
+
+    public function detailMitra($id)
+    {
+        $mitra = \App\Models\MitraVerification::with(['user.campaigns', 'instansiDaerah'])->findOrFail($id);
+        
+        $campaigns = $mitra->user->campaigns()->orderByDesc('created_at')->get();
+
+        return view('admin.superadmin.detail_mitra', compact('mitra', 'campaigns'));
+    }
+
+    public function detailCampaign($id)
+    {
+        $campaign = \App\Models\CampaignDonasi::with(['user.mitraVerification', 'donasiBuku.user'])->findOrFail($id);
+        
+        // Mengambil daftar donasi yang sudah selesai atau sedang proses
+        $donations = $campaign->donasiBuku()->orderByDesc('created_at')->get();
+
+        return view('admin.superadmin.detail_campaign', compact('campaign', 'donations'));
+    }
+
+    public function approveMitra(Request $request)
+    {
+        $id = (int) $request->verification_id;
+        $verification = \App\Models\MitraVerification::find($id);
+        if (!$verification) return back()->with('error', 'Data verifikasi tidak ditemukan.');
+
+        $verification->update(['status_verifikasi' => 'approved', 'catatan_admin' => $request->catatan_admin]);
+
+        Notifikasi::create([
+            'user_id'    => $verification->user_id,
+            'tipe'       => 'mitra_disetujui',
+            'pesan'      => 'Selamat! Akun mitra "' . $verification->nama_instansi . '" telah diverifikasi. Anda sekarang bisa membuat kampanye donasi buku!',
+            'url_target' => '/donasi/dashboard',
+        ]);
+
+        LogAktivitas::record(auth()->id(), 'Approve Mitra', "Menyetujui mitra: {$verification->nama_instansi}");
+
+        return back()->with('success', 'Mitra "' . $verification->nama_instansi . '" berhasil disetujui!');
+    }
+
+    public function rejectMitra(Request $request)
+    {
+        $id = (int) $request->verification_id;
+        $catatan = trim($request->catatan_admin ?? '');
+        $verification = \App\Models\MitraVerification::find($id);
+        if (!$verification) return back()->with('error', 'Data verifikasi tidak ditemukan.');
+
+        $verification->update(['status_verifikasi' => 'rejected', 'catatan_admin' => $catatan ?: null]);
+
+        Notifikasi::create([
+            'user_id'    => $verification->user_id,
+            'tipe'       => 'mitra_ditolak',
+            'pesan'      => 'Pendaftaran mitra "' . $verification->nama_instansi . '" ditolak.' . ($catatan ? " Alasan: {$catatan}" : ''),
+            'url_target' => null,
+        ]);
+
+        LogAktivitas::record(auth()->id(), 'Reject Mitra', "Menolak mitra: {$verification->nama_instansi}");
+
+        return back()->with('success', 'Mitra ditolak.');
+    }
+
+    public function suspendMitra(Request $request)
+    {
+        $id = (int) $request->verification_id;
+        $verification = \App\Models\MitraVerification::find($id);
+        if (!$verification) return back()->with('error', 'Data mitra tidak ditemukan.');
+
+        $statusBaru = $verification->status_verifikasi === 'approved' ? 'suspended' : 'approved';
+        $verification->update(['status_verifikasi' => $statusBaru]);
+
+        $pesanTeks = $statusBaru === 'suspended' ? 'dinonaktifkan' : 'diaktifkan kembali';
+        $pesanAksi = $statusBaru === 'suspended' ? 'Menonaktifkan' : 'Mengaktifkan';
+
+        Notifikasi::create([
+            'user_id'    => $verification->user_id,
+            'tipe'       => 'mitra_' . $statusBaru,
+            'pesan'      => 'Akun mitra Anda ("' . $verification->nama_instansi . '") telah ' . $pesanTeks . ' oleh Superadmin.',
+            'url_target' => '/donasi/dashboard',
+        ]);
+
+        LogAktivitas::record(auth()->id(), 'Suspend Mitra', "{$pesanAksi} mitra: {$verification->nama_instansi}");
+
+        return back()->with('success', "Mitra berhasil {$pesanTeks}.");
+    }
+
+    public function deleteMitra(Request $request)
+    {
+        $id = (int) $request->verification_id;
+        $verification = \App\Models\MitraVerification::find($id);
+        if (!$verification) return back()->with('error', 'Data mitra tidak ditemukan.');
+
+        $namaInstansi = $verification->nama_instansi;
+
+        // Optionally, remove the user's role_id 4 back to 3 (User) or delete user
+        if ($verification->user) {
+            $verification->user->update(['role_id' => 3]);
+        }
+
+        $verification->delete();
+
+        LogAktivitas::record(auth()->id(), 'Delete Mitra', "Menghapus mitra: {$namaInstansi}");
+
+        return back()->with('success', 'Data mitra berhasil dihapus.');
+    }
+
+    public function approveCampaignDonasi(Request $request)
+    {
+        $id = (int) $request->campaign_id;
+        $campaign = \App\Models\CampaignDonasi::find($id);
+        if (!$campaign) return back()->with('error', 'Kampanye tidak ditemukan.');
+
+        $campaign->update(['status' => 'active']);
+
+        Notifikasi::create([
+            'user_id'    => $campaign->user_id,
+            'tipe'       => 'kampanye_disetujui',
+            'pesan'      => 'Kampanye donasi "' . $campaign->judul . '" telah disetujui dan sekarang tampil di halaman publik!',
+            'url_target' => '/donasi/' . $campaign->id,
+        ]);
+
+        return back()->with('success', 'Kampanye berhasil disetujui!');
+    }
+
+    public function rejectCampaignDonasi(Request $request)
+    {
+        $id = (int) $request->campaign_id;
+        $catatan = trim($request->catatan_admin ?? '');
+        $campaign = \App\Models\CampaignDonasi::find($id);
+        if (!$campaign) return back()->with('error', 'Kampanye tidak ditemukan.');
+
+        $campaign->update(['status' => 'rejected', 'catatan_admin' => $catatan ?: null]);
+
+        Notifikasi::create([
+            'user_id'    => $campaign->user_id,
+            'tipe'       => 'kampanye_ditolak',
+            'pesan'      => 'Kampanye donasi "' . $campaign->judul . '" ditolak.' . ($catatan ? " Alasan: {$catatan}" : ''),
+            'url_target' => null,
+        ]);
+
+        return back()->with('success', 'Kampanye ditolak.');
+    }
+
+
+    // ─── PANDUAN (FAQ) ───────────────────────────────────────
+    public function panduans()
+    {
+        $panduans = \App\Models\Panduan::orderBy('kategori')->orderBy('urutan')->get();
+        $kategoriList = \App\Models\KategoriPanduan::orderBy('nama')->get();
+        return view('admin.superadmin.panduan', compact('panduans', 'kategoriList'));
+    }
+
+    public function createPanduan(Request $request)
+    {
+        $request->validate([
+            'pertanyaan' => 'required|string|max:255',
+            'jawaban'    => 'required|string',
+            'kategori'   => 'required|string|max:100',
+            'urutan'     => 'nullable|integer'
+        ]);
+
+        \App\Models\Panduan::create([
+            'pertanyaan' => $request->pertanyaan,
+            'jawaban'    => $request->jawaban,
+            'kategori'   => $request->kategori,
+            'urutan'     => $request->urutan ?? 0
+        ]);
+
+        return redirect()->back()->with('success', 'Panduan berhasil ditambahkan.');
+    }
+
+    public function editPanduan(Request $request, $id)
+    {
+        $request->validate([
+            'pertanyaan' => 'required|string|max:255',
+            'jawaban'    => 'required|string',
+            'kategori'   => 'required|string|max:100',
+            'urutan'     => 'nullable|integer'
+        ]);
+
+        $panduan = \App\Models\Panduan::findOrFail($id);
+        $panduan->update([
+            'pertanyaan' => $request->pertanyaan,
+            'jawaban'    => $request->jawaban,
+            'kategori'   => $request->kategori,
+            'urutan'     => $request->urutan ?? 0
+        ]);
+
+        return redirect()->back()->with('success', 'Panduan berhasil diperbarui.');
+    }
+
+    public function deletePanduan(Request $request)
+    {
+        $panduan = \App\Models\Panduan::findOrFail($request->id);
+        $panduan->delete();
+
+        return redirect()->back()->with('success', 'Panduan berhasil dihapus.');
+    }
+
+    // ─── KATEGORI PANDUAN ───────────────────────────────────────
+    public function kategoriPanduans()
+    {
+        $kategories = \App\Models\KategoriPanduan::orderBy('nama')->get();
+        return view('admin.superadmin.kategori-panduan', compact('kategories'));
+    }
+
+    public function createKategoriPanduan(Request $request)
+    {
+        $request->validate([
+            'nama' => 'required|string|max:100|unique:kategori_panduans,nama'
+        ]);
+
+        \App\Models\KategoriPanduan::create(['nama' => $request->nama]);
+
+        return redirect()->back()->with('success', 'Kategori berhasil ditambahkan.');
+    }
+
+    public function editKategoriPanduan(Request $request, $id)
+    {
+        $request->validate([
+            'nama' => 'required|string|max:100|unique:kategori_panduans,nama,' . $id
+        ]);
+
+        $kategori = \App\Models\KategoriPanduan::findOrFail($id);
+        
+        // Update kategori lama di panduans table
+        $oldNama = $kategori->nama;
+        \App\Models\Panduan::where('kategori', $oldNama)->update(['kategori' => $request->nama]);
+        
+        $kategori->update(['nama' => $request->nama]);
+
+        return redirect()->back()->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function deleteKategoriPanduan(Request $request)
+    {
+        $kategori = \App\Models\KategoriPanduan::findOrFail($request->id);
+        
+        // Cek apakah ada panduan dengan kategori ini
+        $count = \App\Models\Panduan::where('kategori', $kategori->nama)->count();
+        if ($count > 0) {
+            return redirect()->back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh ' . $count . ' panduan. Silakan ubah atau hapus panduan tersebut terlebih dahulu.');
+        }
+
+        $kategori->delete();
+
+        return redirect()->back()->with('success', 'Kategori berhasil dihapus.');
     }
 }

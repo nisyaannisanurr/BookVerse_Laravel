@@ -313,6 +313,21 @@
                 <div class="nav-icon">🎨</div>
                 Kelola Genre
             </a>
+            <div style="font-size: 0.72rem; color: #9b90a8; font-weight: 700; text-transform: uppercase; margin: 20px 0 8px 16px; letter-spacing: 0.05em;">Kelola Donasi</div>
+            <a href="{{ url('/admin/superadmin/instansi-daerah') }}"
+               class="admin-nav-item {{ $currentPage === 'instansidaerah' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#10b981;">📍</div>
+                Wilayah Mitra
+            </a>
+            <a href="{{ url('/admin/superadmin/mitra') }}"
+               class="admin-nav-item {{ $currentPage === 'mitra' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#f59e0b;">🤝</div>
+                Kelola Mitra
+                @php $pendingMitraCount = \App\Models\MitraVerification::where('status_verifikasi', 'pending')->count() + \App\Models\CampaignDonasi::where('status', 'pending')->count(); @endphp
+                @if($pendingMitraCount > 0)
+                    <span style="background:#f59e0b; color:white; font-size:0.65rem; font-weight:700; padding:2px 7px; border-radius:50px; margin-left:auto;">{{ $pendingMitraCount }}</span>
+                @endif
+            </a>
 
             <div class="admin-nav-label" style="margin-top: 15px;">Sistem Utama</div>
             <a href="{{ url('/admin/superadmin/trash') }}"
@@ -329,6 +344,16 @@
                class="admin-nav-item {{ $currentPage === 'broadcast' ? 'active' : '' }}">
                 <div class="nav-icon" style="color:#0ea5e9;">📢</div>
                 Broadcast Notifikasi
+            </a>
+            <a href="{{ url('/admin/superadmin/panduan') }}"
+               class="admin-nav-item {{ $currentPage === 'panduan' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#10b981;">📖</div>
+                Kelola Panduan
+            </a>
+            <a href="{{ url('/admin/superadmin/kategori-panduan') }}"
+               class="admin-nav-item {{ $currentPage === 'kategori-panduan' ? 'active' : '' }}">
+                <div class="nav-icon" style="color:#f59e0b;">📂</div>
+                Kategori Panduan
             </a>
             <a href="{{ url('/admin/superadmin/profanity') }}"
                class="admin-nav-item {{ $currentPage === 'profanity' ? 'active' : '' }}">

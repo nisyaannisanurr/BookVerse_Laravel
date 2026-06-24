@@ -62,6 +62,71 @@
     </div>
 </div>
 
+{{-- Analytics Chart --}}
+@if(isset($chartData))
+<div style="background:white; border:1px solid #e8e0f0; border-radius:16px; padding:24px; margin-bottom:32px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h3 style="font-size:1.1rem; color:#1a1030; margin:0;">📈 Tren Pertumbuhan (6 Bulan Terakhir)</h3>
+            <p style="font-size:0.8rem; color:#9b90a8; margin-top:4px;">Pendaftaran pengguna baru dan total donasi tersalurkan</p>
+        </div>
+    </div>
+    <div style="height:300px; width:100%;">
+        <canvas id="growthChart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        const chartData = @json($chartData);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels.reverse(), // Reverse so oldest is first
+                datasets: [
+                    {
+                        label: 'Pengguna Baru',
+                        data: chartData.users.reverse(),
+                        borderColor: '#4f3cc9',
+                        backgroundColor: 'rgba(79, 60, 201, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Buku Didonasikan',
+                        data: chartData.donations.reverse(),
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    });
+</script>
+@endif
+
 {{-- Quick Actions --}}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
 
@@ -101,22 +166,30 @@
             <div style="font-weight:700;font-size:0.95rem;color:#1a1030;">⚡ Aksi Cepat</div>
             <div style="font-size:0.75rem;color:#9b90a8;margin-top:2px;">Pintasan ke halaman pengelolaan</div>
         </div>
-        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <a href="{{ url('/admin/superadmin/books/create') }}" style="background:#ede9fb;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;" onmouseover="this.style.background='#ddd6fe'" onmouseout="this.style.background='#ede9fb'">
+        <div style="padding:16px;display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
+            <a href="{{ url('/admin/superadmin/books/create') }}" style="background:#ede9fb;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#ddd6fe'" onmouseout="this.style.background='#ede9fb'">
                 <span style="font-size:1.5rem;">➕</span>
                 <span style="font-size:0.75rem;font-weight:600;color:#4f3cc9;">Tambah Buku</span>
             </a>
-            <a href="{{ url('/admin/superadmin/users') }}" style="background:#eff6ff;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+            <a href="{{ url('/admin/superadmin/users') }}" style="background:#eff6ff;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
                 <span style="font-size:1.5rem;">👥</span>
                 <span style="font-size:0.75rem;font-weight:600;color:#1d4ed8;">Kelola User</span>
             </a>
-            <a href="{{ url('/admin/superadmin/communities') }}" style="background:#f0fdf4;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+            <a href="{{ url('/admin/superadmin/communities') }}" style="background:#f0fdf4;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
                 <span style="font-size:1.5rem;">🏘️</span>
                 <span style="font-size:0.75rem;font-weight:600;color:#16a34a;">Komunitas</span>
             </a>
-            <a href="{{ url('/admin/superadmin/preloved') }}" style="background:#fffbeb;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;" onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#fffbeb'">
+            <a href="{{ url('/admin/superadmin/preloved') }}" style="background:#fffbeb;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#fef3c7'" onmouseout="this.style.background='#fffbeb'">
                 <span style="font-size:1.5rem;">🏷️</span>
                 <span style="font-size:0.75rem;font-weight:600;color:#d97706;">Preloved</span>
+            </a>
+            <a href="{{ url('/admin/superadmin/panduan') }}" style="background:#fdf2f8;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#fce7f3'" onmouseout="this.style.background='#fdf2f8'">
+                <span style="font-size:1.5rem;">📖</span>
+                <span style="font-size:0.75rem;font-weight:600;color:#db2777;">Panduan</span>
+            </a>
+            <a href="{{ url('/admin/superadmin/reports') }}" style="background:#fef2f2;border-radius:12px;padding:16px;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:6px;transition:0.2s;text-align:center;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+                <span style="font-size:1.5rem;">🚩</span>
+                <span style="font-size:0.75rem;font-weight:600;color:#dc2626;">Laporan</span>
             </a>
         </div>
     </div>

@@ -3,7 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\DonasiController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MitraAuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PrelovedController;
 use App\Http\Controllers\ProfileController;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 // ─── HOME & MISC ───────────────────────────────────────────
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/panduan', [HomeController::class, 'panduan'])->name('panduan');
 Route::post('/report', [HomeController::class, 'submitReport'])->name('report.submit');
 Route::get('/search', [BookController::class, 'search'])->name('search');
 Route::get('/recommendations', [RecommendationController::class, 'index'])->name('recommendations.index');
@@ -22,9 +25,9 @@ Route::get('/about', fn() => view('pages.about'))->name('about');
 
 // ─── AUTH ROUTES ───────────────────────────────────────────
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/logout', [AuthController::class, 'logout']); // fallback
 
@@ -34,15 +37,23 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 
 // ─── SUPERADMIN DEDICATED LOGIN ────────────────────────────
 Route::get('/superadmin/login', [SuperadminAuthController::class, 'showLogin'])->name('superadmin.login');
-Route::post('/superadmin/login', [SuperadminAuthController::class, 'login'])->name('superadmin.login.post');
+Route::post('/superadmin/login', [SuperadminAuthController::class, 'login'])->name('superadmin.login.post')->middleware('throttle:5,1');
 Route::post('/superadmin/logout', [SuperadminAuthController::class, 'logout'])->name('superadmin.logout');
+Route::get('/superadmin/verify-otp', [SuperadminAuthController::class, 'showVerifyOtp'])->name('superadmin.verify-otp');
+Route::post('/superadmin/verify-otp', [SuperadminAuthController::class, 'verifyOtp'])->name('superadmin.verify-otp.post');
 
 // ─── ADMIN KOMUNITAS DEDICATED AUTH ────────────────────────
 Route::get('/komunitas/masuk',  [\App\Http\Controllers\AdminKomunitasAuthController::class, 'showLogin'])->name('komunitas.admin.login');
-Route::post('/komunitas/masuk', [\App\Http\Controllers\AdminKomunitasAuthController::class, 'login'])->name('komunitas.admin.login.post');
+Route::post('/komunitas/masuk', [\App\Http\Controllers\AdminKomunitasAuthController::class, 'login'])->name('komunitas.admin.login.post')->middleware('throttle:5,1');
 Route::get('/komunitas/daftar', [\App\Http\Controllers\AdminKomunitasAuthController::class, 'showRegister'])->name('komunitas.admin.register');
-Route::post('/komunitas/daftar',[\App\Http\Controllers\AdminKomunitasAuthController::class, 'register'])->name('komunitas.admin.register.post');
+Route::post('/komunitas/daftar',[\App\Http\Controllers\AdminKomunitasAuthController::class, 'register'])->name('komunitas.admin.register.post')->middleware('throttle:5,1');
 Route::post('/komunitas/keluar',[\App\Http\Controllers\AdminKomunitasAuthController::class, 'logout'])->name('komunitas.admin.logout');
+
+// ─── MITRA AUTH ────────────────────────────────────────────
+Route::get('/mitra/masuk',   [MitraAuthController::class, 'showLogin'])->name('mitra.login');
+Route::post('/mitra/masuk',  [MitraAuthController::class, 'login'])->name('mitra.login.post')->middleware('throttle:5,1');
+Route::get('/mitra/daftar',  [MitraAuthController::class, 'showRegister'])->name('mitra.register');
+Route::post('/mitra/daftar', [MitraAuthController::class, 'register'])->name('mitra.register.post')->middleware('throttle:5,1');
 
 // ─── BOOKS ─────────────────────────────────────────────────
 Route::get('/books', [BookController::class, 'index'])->name('books.index');
@@ -80,6 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/community/comment/delete', [CommunityController::class, 'deleteComment'])->name('community.comment.delete');
     Route::post('/community/report', [CommunityController::class, 'report'])->name('community.report');
     Route::post('/community/{id}/challenge/join', [CommunityController::class, 'joinChallenge'])->name('community.challenge.join');
+    Route::get('/community/{id}/challenge/{challengeId}', [CommunityController::class, 'showChallenge'])->name('community.challenge.show');
     Route::post('/community/{id}/qna/ask', [CommunityController::class, 'askQna'])->name('community.qna.ask')->middleware('throttle:15,1');
 });
 
@@ -95,6 +107,32 @@ Route::middleware('auth')->group(function () {
     Route::post('/preloved/delete', [PrelovedController::class, 'delete'])->name('preloved.delete');
     Route::post('/preloved/sold', [PrelovedController::class, 'markSold'])->name('preloved.sold');
 });
+
+// ─── DONASI BUKU ───────────────────────────────────────────
+Route::get('/donasi', [DonasiController::class, 'index'])->name('donasi.index');
+    Route::get('/donasi/{campaign}', [DonasiController::class, 'show'])->name('donasi.show')->where('campaign', '[0-9]+');
+    
+    // Semua user login bisa donasikan buku & update resi
+    Route::middleware('auth')->group(function () {
+        Route::get('/donasi/{campaign}/donate', [DonasiController::class, 'createDonasi']);
+        Route::post('/donasi/{campaign}/donate', [DonasiController::class, 'storeDonasi']);
+        Route::get('/donasi/{campaign}/success', [DonasiController::class, 'donasiSuccess']);
+        Route::post('/donasi/update-resi', [DonasiController::class, 'updateResi'])->name('donasi.updateResi');
+        Route::post('/donasi/laporkan-mitra', [DonasiController::class, 'laporkanMitra'])->name('donasi.laporkanMitra');
+    });
+
+    // Hanya Mitra (role 4) — dashboard & lihat daftar donasi masuk
+    Route::middleware(['auth', 'mitra'])->group(function () {
+        Route::get('/donasi/dashboard', [DonasiController::class, 'mitraDashboard'])->name('donasi.dashboard');
+        Route::get('/donasi/campaign/{id}/donations', [DonasiController::class, 'campaignDonations'])->name('donasi.campaign.donations');
+    });
+
+    // Hanya Mitra yang sudah VERIFIED — buat kampanye & konfirmasi terima buku
+    Route::middleware(['auth', 'mitra', 'mitra.verified'])->group(function () {
+        Route::get('/donasi/campaign/create', [DonasiController::class, 'createCampaign'])->name('donasi.campaign.create');
+        Route::post('/donasi/campaign/create', [DonasiController::class, 'storeCampaign'])->name('donasi.campaign.store');
+        Route::post('/donasi/konfirmasi', [DonasiController::class, 'konfirmasiDiterima'])->name('donasi.konfirmasi');
+    });
 
 // ─── PROFILE ───────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -122,18 +160,21 @@ Route::prefix('admin/superadmin')->middleware(['auth', 'role:1'])->group(functio
     Route::post('/books/delete', [SuperadminController::class, 'deleteBook'])->name('admin.superadmin.books.delete');
 
     Route::get('/users', [SuperadminController::class, 'users'])->name('admin.superadmin.users');
+    Route::get('/users/detail/{id}', [SuperadminController::class, 'detailUser'])->name('admin.superadmin.users.detail')->where('id', '[0-9]+');
     Route::post('/users/delete', [SuperadminController::class, 'deleteUser'])->name('admin.superadmin.users.delete');
     Route::post('/users/suspend', [SuperadminController::class, 'suspendUser'])->name('admin.superadmin.users.suspend');
     Route::get('/users/{id}/edit', [SuperadminController::class, 'editUserForm'])->name('admin.superadmin.users.editform')->where('id', '[0-9]+');
     Route::post('/users/{id}/edit', [SuperadminController::class, 'editUser'])->name('admin.superadmin.users.edit');
 
     Route::get('/communities', [SuperadminController::class, 'communities'])->name('admin.superadmin.communities');
+    Route::get('/communities/detail/{id}', [SuperadminController::class, 'detailCommunity'])->name('admin.superadmin.communities.detail')->where('id', '[0-9]+');
     Route::post('/communities/{id}/approve', [SuperadminController::class, 'approveCommunity'])->name('admin.superadmin.communities.approve');
     Route::post('/communities/approve', [SuperadminController::class, 'approveCommunity']);
     Route::post('/communities/reject', [SuperadminController::class, 'rejectCommunity'])->name('admin.superadmin.communities.reject');
     Route::post('/communities/suspend', [SuperadminController::class, 'suspendCommunity'])->name('admin.superadmin.communities.suspend');
 
     Route::get('/preloved', [SuperadminController::class, 'preloved'])->name('admin.superadmin.preloved');
+    Route::get('/preloved/detail/{id}', [SuperadminController::class, 'detailPreloved'])->name('admin.superadmin.preloved.detail')->where('id', '[0-9]+');
     Route::post('/preloved/suspend', [SuperadminController::class, 'suspendListing'])->name('admin.superadmin.preloved.suspend');
     Route::post('/preloved/delete', [SuperadminController::class, 'deleteListing'])->name('admin.superadmin.preloved.delete');
 
@@ -159,16 +200,45 @@ Route::prefix('admin/superadmin')->middleware(['auth', 'role:1'])->group(functio
     Route::post('/broadcast', [SuperadminController::class, 'sendBroadcast'])->name('admin.superadmin.broadcast.send');
 
     // Settings
-    Route::get('/settings', [SuperadminController::class, 'settings'])->name('admin.superadmin.settings');
-    Route::post('/settings', [SuperadminController::class, 'updateSettings'])->name('admin.superadmin.settings.update');
-
     // Profanities (Kamus Kata Kasar)
     Route::get('/profanity', [SuperadminController::class, 'profanities'])->name('admin.superadmin.profanity');
     Route::post('/profanity/add', [SuperadminController::class, 'addProfanity'])->name('admin.superadmin.profanity.add');
     Route::post('/profanity/delete', [SuperadminController::class, 'deleteProfanity'])->name('admin.superadmin.profanity.delete');
+    
+    // Instansi Daerah (Wilayah Mitra)
+    Route::get('/instansi-daerah', [SuperadminController::class, 'instansiDaerah'])->name('admin.superadmin.instansidaerah');
+    Route::post('/instansi-daerah/create', [SuperadminController::class, 'createInstansiDaerah'])->name('admin.superadmin.instansidaerah.create');
+    Route::post('/instansi-daerah/{id}/edit', [SuperadminController::class, 'editInstansiDaerah'])->name('admin.superadmin.instansidaerah.edit');
+    Route::post('/instansi-daerah/delete', [SuperadminController::class, 'deleteInstansiDaerah'])->name('admin.superadmin.instansidaerah.delete');
 
-    // Logs
+    // Logs & Settings
     Route::get('/logs', [SuperadminController::class, 'logs'])->name('admin.superadmin.logs');
+    Route::get('/settings', [SuperadminController::class, 'settings'])->name('admin.superadmin.settings');
+    Route::post('/settings', [SuperadminController::class, 'updateSettings'])->name('admin.superadmin.settings.update');
+    
+    // Verifikasi Mitra & Kampanye Donasi
+    Route::get('/mitra', [SuperadminController::class, 'verifikasiMitra'])->name('admin.superadmin.mitra');
+    Route::get('/mitra/{id}', [SuperadminController::class, 'detailMitra'])->name('admin.superadmin.mitra.detail')->where('id', '[0-9]+');
+    Route::post('/mitra/approve', [SuperadminController::class, 'approveMitra'])->name('admin.superadmin.mitra.approve');
+    Route::post('/mitra/suspend', [SuperadminController::class, 'suspendMitra'])->name('admin.superadmin.mitra.suspend');
+    Route::post('/mitra/reject', [SuperadminController::class, 'rejectMitra'])->name('admin.superadmin.mitra.reject');
+    Route::post('/mitra/delete', [SuperadminController::class, 'deleteMitra'])->name('admin.superadmin.mitra.delete');
+    
+    Route::get('/campaign/{id}', [SuperadminController::class, 'detailCampaign'])->name('admin.superadmin.campaign.detail')->where('id', '[0-9]+');
+    Route::post('/campaign/approve', [SuperadminController::class, 'approveCampaignDonasi'])->name('admin.superadmin.campaign.approve');
+    Route::post('/campaign/reject', [SuperadminController::class, 'rejectCampaignDonasi'])->name('admin.superadmin.campaign.reject');
+
+    // Kelola Panduan
+    Route::get('/panduan', [SuperadminController::class, 'panduans'])->name('admin.superadmin.panduan');
+    Route::post('/panduan/create', [SuperadminController::class, 'createPanduan'])->name('admin.superadmin.panduan.create');
+    Route::post('/panduan/{id}/edit', [SuperadminController::class, 'editPanduan'])->name('admin.superadmin.panduan.edit');
+    Route::post('/panduan/delete', [SuperadminController::class, 'deletePanduan'])->name('admin.superadmin.panduan.delete');
+
+    // Kelola Kategori Panduan
+    Route::get('/kategori-panduan', [SuperadminController::class, 'kategoriPanduans'])->name('admin.superadmin.kategori-panduan');
+    Route::post('/kategori-panduan/create', [SuperadminController::class, 'createKategoriPanduan'])->name('admin.superadmin.kategori-panduan.create');
+    Route::post('/kategori-panduan/{id}/edit', [SuperadminController::class, 'editKategoriPanduan'])->name('admin.superadmin.kategori-panduan.edit');
+    Route::post('/kategori-panduan/delete', [SuperadminController::class, 'deleteKategoriPanduan'])->name('admin.superadmin.kategori-panduan.delete');
 });
 
 // ─── ADMIN: ADMIN KOMUNITAS ────────────────────────────────

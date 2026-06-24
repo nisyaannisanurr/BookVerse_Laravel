@@ -9,6 +9,14 @@
     <link rel="icon" href="{{ asset('images/logo-bookverse.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}?v={{ time() }}">
     @stack('styles')
+    <script>
+        // Set dark mode immediately to avoid flash
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    </script>
 </head>
 <body>
 
@@ -33,15 +41,35 @@
             <a href="{{ url('/community') }}"        class="nav-link {{ request()->routeIs('community.*') ? 'active' : '' }}">Komunitas</a>
             <a href="{{ url('/recommendations') }}"  class="nav-link {{ request()->routeIs('recommendations.*') || request()->routeIs('books.*') || request()->routeIs('search') ? 'active' : '' }}">Rekomendasi</a>
             <a href="{{ url('/preloved') }}"          class="nav-link {{ request()->routeIs('preloved.*') ? 'active' : '' }}">Preloved Books</a>
-            <a href="{{ url('/about') }}"             class="nav-link {{ request()->routeIs('about') ? 'active' : '' }}">Tentang Kami</a>
+            <a href="{{ url('/donasi') }}"            class="nav-link {{ request()->routeIs('donasi.*') ? 'active' : '' }}">Donasi Buku</a>
         </div>
 
         <!-- Right Actions -->
         <div class="nav-actions">
-            <!-- Search -->
-            <button class="nav-search-btn" id="searchToggle" title="Cari">🔍</button>
+            
+            <!-- 3 Dots More Menu -->
+            <div style="position:relative; display:inline-block;" class="nav-more-menu" tabindex="0">
+                <button class="nav-search-btn" style="cursor:pointer;" title="Lainnya">⋮</button>
+                <div class="more-dropdown" style="position:absolute; top:120%; right:0; background:white; border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow-lg); width:160px; display:none; flex-direction:column; padding:8px 0; z-index:1000;">
+                    <a href="{{ url('/about') }}" style="padding:10px 20px; color:var(--text); text-decoration:none; font-size:0.9rem; font-weight:500; transition:0.2s;" onmouseover="this.style.background='#f5f3ff'; this.style.color='var(--primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text)'">Tentang Kami</a>
+                    <a href="{{ url('/panduan') }}" style="padding:10px 20px; color:var(--text); text-decoration:none; font-size:0.9rem; font-weight:500; transition:0.2s;" onmouseover="this.style.background='#f5f3ff'; this.style.color='var(--primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text)'">Panduan</a>
+                </div>
+            </div>
+            
+            <style>
+                .nav-more-menu:hover .more-dropdown,
+                .nav-more-menu:focus-within .more-dropdown {
+                    display: flex !important;
+                }
+            </style>
+
+            <!-- Dark Mode Toggle -->
+            <button type="button" class="notif-btn" id="themeToggleBtn" title="Toggle Dark Mode" style="font-size:1.2rem; background:transparent; border:none; box-shadow:none;">
+                🌙
+            </button>
 
             @auth
+
                 <!-- Notifications -->
                 <a href="{{ url('/notifications') }}" class="notif-btn" id="notifBtn" title="Notifikasi">
                     🔔
@@ -62,6 +90,8 @@
                     <a href="{{ url('/admin/superadmin') }}" class="btn btn-outline btn-sm">Admin</a>
                 @elseif(auth()->user()->isAdminKomunitas())
                     <a href="{{ url('/admin/komunitas') }}" class="btn btn-outline btn-sm">Dashboard</a>
+                @elseif(auth()->user()->isMitra())
+                    <a href="{{ url('/donasi/dashboard') }}" class="btn btn-outline btn-sm" style="border-color:#f59e0b;color:#d97706;">Mitra</a>
                 @endif
 
                 <form method="POST" action="{{ url('/logout') }}" style="display:inline;">
@@ -111,6 +141,7 @@
             <a href="{{ url('/community') }}"    class="admin-nav-item {{ request()->is('community*') ? 'active' : '' }}"><span class="icon">🏘️</span> Komunitas</a>
             <a href="{{ url('/recommendations') }}" class="admin-nav-item {{ request()->is('recommendations*') ? 'active' : '' }}"><span class="icon">✨</span> Rekomendasi</a>
             <a href="{{ url('/preloved') }}"     class="admin-nav-item {{ request()->is('preloved*') ? 'active' : '' }}"><span class="icon">🏷️</span> Preloved Books</a>
+            <a href="{{ url('/donasi') }}"       class="admin-nav-item {{ request()->is('donasi*') ? 'active' : '' }}"><span class="icon">❤️</span> Donasi Buku</a>
             <a href="{{ url('/about') }}"        class="admin-nav-item"><span class="icon">ℹ️</span> Tentang Kami</a>
             @auth
                 <a href="{{ url('/profile') }}"  class="admin-nav-item"><span class="icon">👤</span> Profil</a>
@@ -213,44 +244,44 @@
 <!-- ═══════════════════════════════════════
      FOOTER
      ═══════════════════════════════════════ -->
-<footer style="background:var(--text);color:white;padding:var(--space-xl) 0;margin-top:var(--space-2xl);">
+<footer style="background:var(--bg-surface);border-top:1px solid var(--border);padding:var(--space-xl) 0;margin-top:var(--space-2xl);">
     <div style="max-width:var(--max-w);margin:0 auto;padding:0 var(--space-xl);display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--space-xl);">
         <div>
             <div class="logo" style="margin-bottom:var(--space-md);">
                 <img src="{{ asset('images/logo-bookverse.png') }}" alt="" style="width:40px;height:40px;object-fit:contain;">
                 <div>
-                    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:white;">BookVerse</div>
+                    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--text);">BookVerse</div>
                     <div style="font-size:0.7rem;color:var(--accent);font-weight:500;">Buka Buku, Buka Dunia.</div>
                 </div>
             </div>
-            <p style="font-size:0.85rem;color:rgba(255,255,255,0.6);line-height:1.7;max-width:280px;">
+            <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;max-width:280px;">
                 Komunitas pecinta buku untuk membaca, berbagi rekomendasi, dan menemukan dunia baru bersama.
             </p>
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">Menu</h4>
-            @foreach([['Beranda','/'],[' Buku','/books'],['Komunitas','/community'],['Preloved','/preloved']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.7);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">{{ $item[0] }}</a>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Menu</h4>
+            @foreach([['Beranda','/'],[' Buku','/books'],['Komunitas','/community'],['Preloved','/preloved'],['Donasi Buku','/donasi']] as $item)
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
             @endforeach
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">Akun</h4>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Akun</h4>
             @foreach([['Profil','/profile'],['Notifikasi','/notifications']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.7);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">{{ $item[0] }}</a>
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
             @endforeach
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;">Info</h4>
-            @foreach([['Tentang Kami','/about'],['Rekomendasi','/recommendations']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.7);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">{{ $item[0] }}</a>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Info</h4>
+            @foreach([['Panduan','/panduan'],['Tentang Kami','/about'],['Rekomendasi','/recommendations']] as $item)
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
             @endforeach
         </div>
     </div>
-    <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:var(--space-xl);padding-top:var(--space-md);text-align:center;font-size:0.8rem;color:rgba(255,255,255,0.4);">
-        © {{ date('Y') }} BookVerse. All rights reserved.
+    <div style="max-width:var(--max-w);margin:0 auto;padding:var(--space-xl) var(--space-xl) 0;border-top:1px solid var(--border);margin-top:var(--space-xl);text-align:center;font-size:0.8rem;color:var(--text-muted);">
+        &copy; {{ date('Y') }} BookVerse. All rights reserved.
     </div>
 </footer>
 
@@ -290,6 +321,29 @@
                 document.getElementById(formId).submit();
             }
         }
+    }
+
+    // Dark Mode Toggle Logic
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+        // Set initial icon
+        if (document.documentElement.getAttribute('data-theme') === 'dark') {
+            themeToggleBtn.textContent = '☀️';
+        } else {
+            themeToggleBtn.textContent = '🌙';
+        }
+
+        themeToggleBtn.addEventListener('click', function() {
+            if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                themeToggleBtn.textContent = '🌙';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                themeToggleBtn.textContent = '☀️';
+            }
+        });
     }
 </script>
 @stack('scripts')

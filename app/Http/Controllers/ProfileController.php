@@ -40,7 +40,12 @@ class ProfileController extends Controller
 
         $sales = PrelovedBook::where('user_id', auth()->id())->orderByDesc('created_at')->get();
 
-        return view('profile.index', compact('user', 'tab', 'shelfTab', 'shelfBooks', 'shelfCounts', 'sales'));
+        $donations = \App\Models\DonasiBuku::with(['campaign.user.mitraVerification'])
+            ->where('user_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('profile.index', compact('user', 'tab', 'shelfTab', 'shelfBooks', 'shelfCounts', 'sales', 'donations'));
     }
 
     public function edit()

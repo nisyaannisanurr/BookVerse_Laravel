@@ -50,6 +50,22 @@ class AuthController extends Controller
             return redirect()->route('login')->with('error', 'Akun Anda telah ditangguhkan oleh Admin karena melanggar pedoman komunitas.');
         }
 
+        // --- OTP INJECTION FOR MITRA ---
+        if ($user->role_id === 4) {
+            $otpCode = sprintf("%06d", mt_rand(1, 999999));
+            \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->update([
+                'otp_code' => $otpCode,
+                'otp_expires_at' => now()->addMinutes(5),
+            ]);
+
+            $waService = new \App\Services\WhatsAppService();
+            $targetNumber = $user->no_wa ?? '082249219360';
+            $waService->sendOTP($targetNumber, $otpCode);
+
+            $request->session()->put('otp_user_id', $user->id);
+            return redirect('/superadmin/verify-otp')->with('success', 'Kode OTP telah dikirim ke WhatsApp Anda.');
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
 

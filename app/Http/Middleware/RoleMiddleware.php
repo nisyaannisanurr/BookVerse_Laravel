@@ -13,9 +13,15 @@ class RoleMiddleware
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $roleId = (int) $role;
+        $userRoleId = auth()->user()->role_id;
+        $requiredRoleId = (int) $role;
 
-        if (auth()->user()->role_id !== $roleId) {
+        // Superadmin (role 1) selalu lolos — bisa akses semua panel (hierarki role)
+        if ($userRoleId === 1) {
+            return $next($request);
+        }
+
+        if ($userRoleId !== $requiredRoleId) {
             abort(403, 'Akses ditolak.');
         }
 

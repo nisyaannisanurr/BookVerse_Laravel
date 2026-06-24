@@ -396,8 +396,8 @@
                     </div>
 
                     <div class="form-group" style="margin-top: 10px;">
-                        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-                        <div class="g-recaptcha" data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"></div>
+                        <script src="https://www.recaptcha.net/recaptcha/api.js" async defer></script>
+                        <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
                         @error('g-recaptcha-response')
                             <span class="form-hint" style="color:var(--danger); margin-top:5px; display:block;">{{ $message }}</span>
                         @enderror

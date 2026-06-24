@@ -22,4 +22,9 @@ class TantanganMembaca extends Model
     {
         return $this->hasMany(PesertaTantangan::class, 'tantangan_id');
     }
+
+    public function postingan()
+    {
+        return $this->hasMany(PostinganKomunitas::class, 'tantangan_id');
+    }
 }

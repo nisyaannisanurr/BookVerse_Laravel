@@ -174,6 +174,44 @@
     </div>
 </div>
 
+{{-- Top Donatur --}}
+<div style="margin-top:var(--space-2xl);">
+    <div class="section-header" style="justify-content:center;text-align:center;margin-bottom:24px;">
+        <h2 class="section-title" style="font-size:1.8rem;">🏆 Pahlawan Literasi (Top Donatur)</h2>
+    </div>
+    @if(isset($topDonators) && $topDonators->count() > 0)
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:var(--space-lg);">
+            @foreach($topDonators as $index => $donatur)
+            <div class="card" style="text-align:center;padding:var(--space-xl) var(--space-lg);position:relative;overflow:hidden;">
+                @if($index === 0)
+                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);background:#f59e0b;color:white;padding:4px 20px;border-bottom-left-radius:10px;border-bottom-right-radius:10px;font-size:0.7rem;font-weight:800;letter-spacing:1px;z-index:2;">RANK #1</div>
+                @endif
+                <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg, var(--primary-light), var(--bg-surface));color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;margin:10px auto var(--space-md);border:3px solid var(--primary-light);box-shadow:0 8px 20px rgba(79,60,201,0.15);">
+                    @if($donatur->foto_profil)
+                        <img src="{{ BookVerseHelper::uploadUrl('profiles', $donatur->foto_profil) }}" alt="{{ $donatur->username }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                    @else
+                        {{ strtoupper(substr($donatur->username, 0, 1)) }}
+                    @endif
+                </div>
+                <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:4px;font-family:var(--font-display);">{{ $donatur->username }}</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">Telah Berdonasi <strong style="color:var(--primary);">{{ $donatur->total_donasi }}</strong> Buku</div>
+                <a href="{{ url('/donasi') }}" style="display:inline-block;padding:6px 16px;border-radius:50px;background:linear-gradient(135deg, #f59e0b, #d97706);color:white;font-size:0.75rem;font-weight:700;text-transform:uppercase;box-shadow:0 4px 10px rgba(217,119,6,0.3);text-decoration:none;">
+                    Pahlawan Literasi
+                </a>
+            </div>
+            @endforeach
+        </div>
+        <div style="text-align:center;margin-top:20px;">
+            <a href="{{ url('/donasi') }}" class="btn btn-outline" style="border-radius:50px;">Yuk Ikut Berdonasi 💖</a>
+        </div>
+    @else
+        <div class="empty-state" style="padding:var(--space-xl) 0;">
+            <span class="emoji">🎁</span><p>Belum ada donatur, jadilah yang pertama!</p>
+            <a href="{{ url('/donasi') }}" class="btn btn-primary" style="margin-top:10px;border-radius:50px;">Donasi Sekarang</a>
+        </div>
+    @endif
+</div>
+
 {{-- CTA Banner --}}
 <div style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);border-radius:var(--radius-xl);padding:var(--space-xl) var(--space-2xl);margin-top:var(--space-2xl);display:flex;align-items:center;justify-content:space-between;gap:var(--space-xl);">
     <div>
@@ -192,10 +230,10 @@
 {{-- Stats Bar --}}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:var(--radius-xl);overflow:hidden;margin-top:var(--space-xl);border:1px solid var(--border);">
     @foreach([['👥','10K+','Anggota Aktif'],['📚','25K+','Buku Terdaftar'],['⭐','15K+','Review & Penilaian'],['🌍','50K+','Rating Diberikan']] as $s)
-    <div style="background:var(--text);padding:var(--space-lg);text-align:center;">
+    <div style="background:var(--bg-surface);padding:var(--space-lg);text-align:center;">
         <div style="font-size:1.3rem;margin-bottom:6px;">{{ $s[0] }}</div>
-        <div style="font-size:1.2rem;font-weight:700;color:white;">{{ $s[1] }}</div>
-        <div style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:2px;">{{ $s[2] }}</div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--text);">{{ $s[1] }}</div>
+        <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">{{ $s[2] }}</div>
     </div>
     @endforeach
 </div>

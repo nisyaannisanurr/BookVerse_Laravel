@@ -123,7 +123,10 @@ class AdminKomunitasController extends Controller
     public function moderation(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        // Cek kepemilikan DAN status aktif — admin komunitas suspended tidak bisa moderasi
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') {
+            abort(403, 'Akses ditolak. Komunitas tidak aktif atau bukan milik Anda.');
+        }
 
         $posts = PostinganKomunitas::where('komunitas_id', $komunitasId)
             ->with('user:id,username,foto_profil')
@@ -189,7 +192,7 @@ class AdminKomunitasController extends Controller
         $request->validate(['pesan' => 'required|string|max:255']);
         $community = Komunitas::find($komunitasId);
         
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $members = AnggotaKomunitas::where('komunitas_id', $komunitasId)->where('status', 'approved')->get();
         foreach ($members as $member) {
@@ -244,7 +247,7 @@ class AdminKomunitasController extends Controller
     public function events(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $events = EventKomunitas::where('komunitas_id', $komunitasId)->orderBy('tanggal_waktu', 'asc')->get();
         return view('admin.community_admin.events', compact('community', 'events'));
@@ -253,7 +256,7 @@ class AdminKomunitasController extends Controller
     public function createEvent(Request $request, int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $request->validate([
             'judul' => 'required|string|max:100',
@@ -286,7 +289,7 @@ class AdminKomunitasController extends Controller
     public function settings(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         return view('admin.community_admin.settings', compact('community'));
     }
@@ -294,7 +297,7 @@ class AdminKomunitasController extends Controller
     public function updateSettings(Request $request, int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $request->validate([
             'tema_warna' => 'required|string|max:20',
@@ -310,7 +313,7 @@ class AdminKomunitasController extends Controller
     public function badges(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $badges = LencanaKomunitas::where('komunitas_id', $komunitasId)->get();
         $members = AnggotaKomunitas::where('komunitas_id', $komunitasId)->where('status', 'approved')->with('user')->get();
@@ -420,7 +423,7 @@ class AdminKomunitasController extends Controller
     public function challenges(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $challenges = TantanganMembaca::where('komunitas_id', $komunitasId)->withCount('peserta')->get();
 
@@ -456,7 +459,7 @@ class AdminKomunitasController extends Controller
     public function qna(int $komunitasId)
     {
         $community = Komunitas::find($komunitasId);
-        if (!$community || $community->creator_id !== auth()->id()) abort(403);
+        if (!$community || $community->creator_id !== auth()->id() || $community->status !== 'aktif') abort(403);
 
         $qnas = QnaKomunitas::where('komunitas_id', $komunitasId)->with('pertanyaan.user')->get();
 

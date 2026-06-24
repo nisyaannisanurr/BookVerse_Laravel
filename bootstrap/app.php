@@ -13,11 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\CheckMaintenanceMode::class,
+            \App\Http\Middleware\SecurityHeadersMiddleware::class,
         ]);
 
         $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'community.access' => \App\Http\Middleware\CommunityAccessMiddleware::class,
+            'role'            => \App\Http\Middleware\RoleMiddleware::class,
+            'community.access'=> \App\Http\Middleware\CommunityAccessMiddleware::class,
+            'mitra'           => \App\Http\Middleware\MitraMiddleware::class,
+            'mitra.verified'  => \App\Http\Middleware\MitraVerifiedMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

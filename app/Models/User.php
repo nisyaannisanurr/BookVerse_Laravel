@@ -86,6 +86,21 @@ class User extends Authenticatable
         return $this->hasMany(Notifikasi::class, 'user_id');
     }
 
+    public function mitraVerification()
+    {
+        return $this->hasOne(MitraVerification::class, 'user_id');
+    }
+
+    public function campaigns()
+    {
+        return $this->hasMany(CampaignDonasi::class, 'user_id');
+    }
+
+    public function donasiBuku()
+    {
+        return $this->hasMany(DonasiBuku::class, 'user_id');
+    }
+
     // Helper methods
     public function isSuperadmin(): bool
     {
@@ -100,6 +115,18 @@ class User extends Authenticatable
     public function isUser(): bool
     {
         return $this->role_id === 3;
+    }
+
+    public function isMitra(): bool
+    {
+        return $this->role_id === 4;
+    }
+
+    public function isMitraVerified(): bool
+    {
+        if (!$this->isMitra()) return false;
+        $verification = $this->mitraVerification;
+        return $verification && $verification->isApproved();
     }
 
     // Scopes

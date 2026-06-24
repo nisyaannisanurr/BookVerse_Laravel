@@ -283,8 +283,8 @@
             </div>
 
             <div class="form-group" style="margin-top:20px;">
-                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-                <div class="g-recaptcha" data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}" data-theme="dark"></div>
+                <script src="https://www.recaptcha.net/recaptcha/api.js" async defer></script>
+                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}" data-theme="dark"></div>
                 @error('g-recaptcha-response')
                     <span style="color:#fca5a5;font-size:0.8rem;margin-top:5px;display:block;">{{ $message }}</span>
                 @enderror

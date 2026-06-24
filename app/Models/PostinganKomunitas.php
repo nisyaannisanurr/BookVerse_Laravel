@@ -19,6 +19,7 @@ class PostinganKomunitas extends Model
         'konten',
         'gambar',
         'is_pinned',
+        'tantangan_id',
     ];
 
     public function user()
@@ -29,6 +30,11 @@ class PostinganKomunitas extends Model
     public function komunitas()
     {
         return $this->belongsTo(Komunitas::class, 'komunitas_id');
+    }
+
+    public function tantangan()
+    {
+        return $this->belongsTo(TantanganMembaca::class, 'tantangan_id');
     }
 
     public function komentar()
