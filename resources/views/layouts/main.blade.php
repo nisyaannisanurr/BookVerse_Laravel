@@ -244,43 +244,43 @@
 <!-- ═══════════════════════════════════════
      FOOTER
      ═══════════════════════════════════════ -->
-<footer style="background:var(--bg-surface);border-top:1px solid var(--border);padding:var(--space-xl) 0;margin-top:var(--space-2xl);">
+<footer style="background:#53389E; color:#FFFFFF; padding:var(--space-xl) 0; margin-top:var(--space-2xl);">
     <div style="max-width:var(--max-w);margin:0 auto;padding:0 var(--space-xl);display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--space-xl);">
         <div>
             <div class="logo" style="margin-bottom:var(--space-md);">
-                <img src="{{ asset('images/logo-bookverse.png') }}" alt="" style="width:40px;height:40px;object-fit:contain;">
+                <img src="{{ asset('images/logo-bookverse.png') }}" alt="" style="width:40px;height:40px;object-fit:contain; filter: brightness(0) invert(1);">
                 <div>
-                    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:var(--text);">BookVerse</div>
-                    <div style="font-size:0.7rem;color:var(--accent);font-weight:500;">Buka Buku, Buka Dunia.</div>
+                    <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#FFFFFF;">BookVerse</div>
+                    <div style="font-size:0.7rem;color:#D1C4E9;font-weight:500;">Buka Buku, Buka Dunia.</div>
                 </div>
             </div>
-            <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;max-width:280px;">
+            <p style="font-size:0.85rem;color:#E6E0F8;line-height:1.7;max-width:280px;">
                 Komunitas pecinta buku untuk membaca, berbagi rekomendasi, dan menemukan dunia baru bersama.
             </p>
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Menu</h4>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:#D1C4E9;text-transform:uppercase;letter-spacing:0.08em;">Menu</h4>
             @foreach([['Beranda','/'],[' Buku','/books'],['Komunitas','/community'],['Preloved','/preloved'],['Donasi Buku','/donasi']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:#E6E0F8;margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='#FFFFFF'" onmouseout="this.style.color='#E6E0F8'">{{ $item[0] }}</a>
             @endforeach
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Akun</h4>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:#D1C4E9;text-transform:uppercase;letter-spacing:0.08em;">Akun</h4>
             @foreach([['Profil','/profile'],['Notifikasi','/notifications']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:#E6E0F8;margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='#FFFFFF'" onmouseout="this.style.color='#E6E0F8'">{{ $item[0] }}</a>
             @endforeach
         </div>
         <div>
-            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Info</h4>
+            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:var(--space-md);color:#D1C4E9;text-transform:uppercase;letter-spacing:0.08em;">Info</h4>
             @foreach([['Panduan','/panduan'],['Tentang Kami','/about'],['Rekomendasi','/recommendations']] as $item)
-                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;transition:var(--transition);"
-                   onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-secondary)'">{{ $item[0] }}</a>
+                <a href="{{ url($item[1]) }}" style="display:block;font-size:0.85rem;color:#E6E0F8;margin-bottom:6px;transition:var(--transition);"
+                   onmouseover="this.style.color='#FFFFFF'" onmouseout="this.style.color='#E6E0F8'">{{ $item[0] }}</a>
             @endforeach
         </div>
     </div>
-    <div style="max-width:var(--max-w);margin:0 auto;padding:var(--space-xl) var(--space-xl) 0;border-top:1px solid var(--border);margin-top:var(--space-xl);text-align:center;font-size:0.8rem;color:var(--text-muted);">
+    <div style="max-width:var(--max-w);margin:0 auto;padding:var(--space-xl) var(--space-xl) 0;border-top:1px solid rgba(255,255,255,0.1);margin-top:var(--space-xl);text-align:center;font-size:0.8rem;color:#D1C4E9;">
         &copy; {{ date('Y') }} BookVerse. All rights reserved.
     </div>
 </footer>
